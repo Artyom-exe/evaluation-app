@@ -2,14 +2,11 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class FormQuestion extends Model
 {
-    use HasFactory;
-
-    protected $fillable = ['form_id', 'questions_types_id', 'label', 'order'];
+    protected $fillable = ['label', 'questions_types_id'];
 
     // Relation : Une question appartient à un formulaire
     public function form()
@@ -27,11 +24,5 @@ class FormQuestion extends Model
     public function choices()
     {
         return $this->hasMany(Choice::class);
-    }
-
-    // Relation : Une question peut recevoir plusieurs réponses
-    public function responses()
-    {
-        return $this->hasMany(Response::class);
     }
 }
