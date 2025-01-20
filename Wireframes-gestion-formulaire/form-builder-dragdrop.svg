@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" style="background-color: white">
+    <!-- Définitions -->
+    <defs>
+        <pattern id="dragGrid" width="10" height="10" patternUnits="userSpaceOnUse">
+            <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#f0f0f0" stroke-width="0.5"/>
+        </pattern>
+        <!-- Ombre pour les éléments draggables -->
+        <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.2"/>
+        </filter>
+    </defs>
+    
+    <!-- Fond -->
+    <rect width="1200" height="800" fill="url(#dragGrid)"/>
+
+    <!-- En-tête -->
+    <rect x="0" y="0" width="1200" height="60" fill="#f8f9fa" stroke="#dee2e6"/>
+    <text x="20" y="38" font-family="Arial" font-size="20" fill="#333">Création de formulaire - Mode drag-and-drop</text>
+
+    <!-- Conteneur principal -->
+    <g transform="translate(0, 60)">
+        <!-- Zone centrale (prévisualisation) -->
+        <rect x="250" y="0" width="700" height="680" fill="white" stroke="#dee2e6"/>
+        <text x="270" y="35" font-family="Arial" font-size="16" font-weight="bold">Zone de construction du formulaire</text>
+        
+        <!-- Zone de drop avec quadrillage -->
+        <g transform="translate(270, 50)">
+            <rect x="0" y="0" width="660" height="610" fill="#f8f9fa" stroke="#dee2e6" rx="4"/>
+            <path d="M 0 0 L 660 0 L 660 610 L 0 610 Z" fill="none" stroke="#666" stroke-width="2" stroke-dasharray="4 4"/>
+            <text x="280" y="50" font-family="Arial" font-size="14" fill="#666" text-anchor="middle">Déposez les éléments ici</text>
+
+            <!-- Exemple de question déposée -->
+            <g transform="translate(20, 100)">
+                <rect x="0" y="0" width="620" height="120" fill="white" stroke="#007bff" rx="4" filter="url(#shadow)"/>
+                <text x="20" y="30" font-family="Arial" font-size="14">Question 1</text>
+                <rect x="20" y="40" width="580" height="30" fill="white" stroke="#ced4da" rx="4"/>
+                <text x="30" y="60" font-family="Arial" font-size="12" fill="#666">Saisissez votre question ici...</text>
+                <rect x="20" y="80" width="150" height="25" fill="#e9ecef" stroke="none" rx="4"/>
+                <text x="35" y="96" font-family="Arial" font-size="12">Type: Choix multiples</text>
+            </g>
+
+            <!-- Exemple de zone de drop active -->
+            <rect x="20" y="240" width="620" height="80" fill="#e8f4ff" stroke="#007bff" stroke-width="2" stroke-dasharray="4 4" rx="4"/>
+        </g>
+
+        <!-- Colonne de droite (éléments draggables) -->
+        <g transform="translate(950, 0)">
+            <rect x="0" y="0" width="250" height="680" fill="white" stroke="#dee2e6"/>
+            <text x="20" y="35" font-family="Arial" font-size="16" font-weight="bold">Types de questions</text>
+
+            <!-- Éléments draggables -->
+            <g transform="translate(10, 50)">
+                <!-- Texte libre -->
+                <rect x="0" y="0" width="230" height="60" fill="#f8f9fa" stroke="#007bff" rx="4" filter="url(#shadow)"/>
+                <text x="20" y="25" font-family="Arial" font-size="14">☰ Texte libre</text>
+                <text x="20" y="45" font-family="Arial" font-size="12" fill="#666">Réponse textuelle courte/longue</text>
+
+                <!-- Choix multiples -->
+                <rect x="0" y="70" width="230" height="60" fill="#f8f9fa" stroke="#007bff" rx="4" filter="url(#shadow)"/>
+                <text x="20" y="95" font-family="Arial" font-size="14">☰ Choix multiples</text>
+                <text x="20" y="115" font-family="Arial" font-size="12" fill="#666">Plusieurs options à cocher</text>
+
+                <!-- Boutons radio -->
+                <rect x="0" y="140" width="230" height="60" fill="#f8f9fa" stroke="#007bff" rx="4" filter="url(#shadow)"/>
+                <text x="20" y="165" font-family="Arial" font-size="14">☰ Boutons radio</text>
+                <text x="20" y="185" font-family="Arial" font-size="12" fill="#666">Une seule option à choisir</text>
+
+                <!-- Liste déroulante -->
+                <rect x="0" y="210" width="230" height="60" fill="#f8f9fa" stroke="#007bff" rx="4" filter="url(#shadow)"/>
+                <text x="20" y="235" font-family="Arial" font-size="14">☰ Liste déroulante</text>
+                <text x="20" y="255" font-family="Arial" font-size="12" fill="#666">Menu déroulant à choix unique</text>
+            </g>
+        </g>
+
+        <!-- Colonne de gauche (structure) -->
+        <rect x="0" y="0" width="250" height="680" fill="white" stroke="#dee2e6"/>
+        <text x="20" y="35" font-family="Arial" font-size="16" font-weight="bold">Structure</text>
+        
+        <!-- Liste des sections -->
+        <g transform="translate(10, 50)">
+            <rect x="0" y="0" width="230" height="40" fill="#f8f9fa" stroke="#dee2e6" rx="4"/>
+            <text x="20" y="25" font-family="Arial" font-size="14">📄 Informations générales</text>
+
+            <rect x="0" y="50" width="230" height="40" fill="#f8f9fa" stroke="#dee2e6" rx="4"/>
+            <text x="20" y="75" font-family="Arial" font-size="14">📄 Questions principales</text>
+
+            <rect x="0" y="100" width="230" height="40" fill="#f8f9fa" stroke="#dee2e6" rx="4"/>
+            <text x="20" y="125" font-family="Arial" font-size="14">+ Nouvelle section</text>
+        </g>
+    </g>
+
+    <!-- Barre d'actions en bas -->
+    <rect x="0" y="740" width="1200" height="60" fill="#f8f9fa" stroke="#dee2e6"/>
+    <g transform="translate(20, 750)">
+        <rect x="0" y="0" width="120" height="40" fill="#6c757d" stroke="none" rx="4"/>
+        <text x="30" y="25" font-family="Arial" font-size="14" fill="white">Annuler</text>
+
+        <rect x="130" y="0" width="120" height="40" fill="#28a745" stroke="none" rx="4"/>
+        <text x="150" y="25" font-family="Arial" font-size="14" fill="white">Enregistrer</text>
+
+        <rect x="260" y="0" width="120" height="40" fill="#007bff" stroke="none" rx="4"/>
+        <text x="285" y="25" font-family="Arial" font-size="14" fill="white">Aperçu</text>
+
+        <rect x="390" y="0" width="120" height="40" fill="#dc3545" stroke="none" rx="4"/>
+        <text x="415" y="25" font-family="Arial" font-size="14" fill="white">Publier</text>
+    </g>
+
+    <!-- Annotations -->
+    <g font-family="Arial" font-size="12" fill="#664d00">
+        <!-- Annotation zone de drop -->
+        <g transform="translate(600, 200)">
+            <rect x="0" y="0" width="220" height="50" fill="#fffae6" rx="4"/>
+            <text x="10" y="20">① Zone de construction interactive</text>
+            <text x="10" y="40">Déposez et réorganisez les questions</text>
+            <path d="M 0 25 L -50 25" stroke="#664d00" stroke-width="1"/>
+        </g>
+
+        <!-- Annotation éléments draggables -->
+        <g transform="translate(950, 400)">
+            <rect x="0" y="0" width="220" height="50" fill="#fffae6" rx="4"/>
+            <text x="10" y="20">② Éléments draggables</text>
+            <text x="10" y="40">Glissez pour ajouter des questions</text>
+            <path d="M 0 25 L -30 -100" stroke="#664d00" stroke-width="1"/>
+        </g>
+
+        <!-- Annotation structure -->
+        <g transform="translate(20, 400)">
+            <rect x="0" y="0" width="220" height="50" fill="#fffae6" rx="4"/>
+            <text x="10" y="20">③ Organisation du formulaire</text>
+            <text x="10" y="40">Gérez la structure par sections</text>
+        </g>
+    </g>
+</svg>
