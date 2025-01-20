@@ -2,6 +2,7 @@
 
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\StudentController;
 use Inertia\Inertia;
 
 Route::get('/', function () {
@@ -21,4 +22,9 @@ Route::middleware([
     Route::get('/dashboard', function () {
         return Inertia::render('Dashboard');
     })->name('dashboard');
+
+
+// Route::get('/students', [StudentController::class, 'index'])->name('students.index');
+
+Route::get('/assign-student', [StudentController::class, 'showAssignStudentPage'])->name('students.assign');
 });
