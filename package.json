@@ -11,7 +11,7 @@
         "@tailwindcss/typography": "^0.5.10",
         "@vitejs/plugin-vue": "^5.0.0",
         "autoprefixer": "^10.4.16",
-        "axios": "^1.7.4",
+        "axios": "^1.7.9",
         "concurrently": "^9.0.1",
         "laravel-vite-plugin": "^1.0",
         "postcss": "^8.4.32",
@@ -27,6 +27,7 @@
         "lucide-react": "^0.471.1",
         "lucide-vue-next": "^0.471.0",
         "radix-vue": "^1.9.12",
+        "remixicon": "^4.6.0",
         "tailwind-merge": "^2.6.0",
         "tailwindcss-animate": "^1.0.7"
     }
