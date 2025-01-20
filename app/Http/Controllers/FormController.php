@@ -6,6 +6,9 @@ use Illuminate\Http\Request;
 use App\Models\Form;
 use App\Models\Module;
 use App\Models\Year;
+use App\Models\QuestionType;
+use App\Models\FormQuestion;
+use App\Models\Choice;
 use Inertia\Inertia;
 
 class FormController extends Controller
@@ -28,7 +31,8 @@ class FormController extends Controller
     public function create()
     {
         return Inertia::render('Forms/Create', [
-            'modules' => Module::all()
+            'modules' => Module::with('professor')->get(),
+            'questionTypes' => QuestionType::all() // Utilisation du modèle QuestionType
         ]);
     }
 
@@ -37,15 +41,76 @@ class FormController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'module_id' => 'required|exists:modules,id',
-            'statut' => 'required|in:open,closed',
-        ]);
+        try {
+            // Log complet des données reçues
+            \Log::info('Données reçues:', $request->all());
 
-        Form::create($request->only(['title', 'module_id', 'statut']));
+            $validated = $request->validate([
+                'title' => 'required|string|max:255',
+                'module_id' => 'required|exists:modules,id',
+                'questions' => 'required|array|min:1',
+                'questions.*.type' => 'required|string',  // Suppression de la validation exists
+                'questions.*.label' => 'required|string',
+                'questions.*.options' => 'nullable|array'
+            ]);
 
-        return redirect()->route('forms.index');
+            \DB::beginTransaction();
+
+            // Créer le formulaire
+            $form = Form::create([
+                'title' => $validated['title'],
+                'module_id' => $validated['module_id'],
+                'statut' => 'open'
+            ]);
+
+            // Log après création du formulaire
+            \Log::info('Formulaire créé:', ['form' => $form->toArray()]);
+
+            // Pour chaque question
+            foreach ($validated['questions'] as $questionData) {
+                // Log de chaque question
+                \Log::info('Traitement question:', $questionData);
+
+                // Recherche du type de question
+                $questionType = QuestionType::where('type', $questionData['type'])->first();
+
+                if (!$questionType) {
+                    throw new \Exception("Type de question non trouvé: " . $questionData['type']);
+                }
+
+                // Créer la question
+                $question = new FormQuestion([
+                    'label' => $questionData['label'],
+                    'questions_types_id' => $questionType->id
+                ]);
+
+                $form->questions()->save($question);
+
+                // Pour les questions avec options
+                if (!empty($questionData['options'])) {
+                    foreach ($questionData['options'] as $optionText) {
+                        if (!empty($optionText)) {
+                            $question->choices()->create(['text' => $optionText]);
+                        }
+                    }
+                }
+            }
+
+            \DB::commit();
+            return redirect()->route('forms.index');
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('Erreur détaillée:', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return back()->withErrors([
+                'error' => 'Erreur lors de la création du formulaire: ' . $e->getMessage()
+            ]);
+        }
     }
 
 

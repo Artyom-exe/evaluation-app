@@ -13,8 +13,9 @@ return new class extends Migration
     {
         Schema::create('questions_types', function (Blueprint $table) {
             $table->id();
-            $table->string('type'); // Ex: text, radio, checkbox
+            $table->string('type')->unique(); // Ex: text, radio, checkbox
             $table->string('label'); // Description of the type
+            $table->string('icon'); // Ex: ri-text, ri-radio-button-line
             $table->timestamps();
         });
     }
