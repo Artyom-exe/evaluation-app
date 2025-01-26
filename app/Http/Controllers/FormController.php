@@ -159,4 +159,60 @@ class FormController extends Controller
         $form->delete();
         return redirect()->route('forms.index');
     }
+
+    public function duplicate(Form $form)
+    {
+        try {
+            \DB::beginTransaction();
+
+            // Chargement explicite des relations nécessaires
+            $form->load(['questions.choices', 'questions.questionType']);
+
+            // Créer une copie du formulaire
+            $newForm = Form::create([
+                'title' => $form->title . ' (copie)',
+                'module_id' => $form->module_id,
+                'statut' => 'open'
+            ]);
+
+            // Dupliquer les questions avec leurs options
+            foreach ($form->questions as $question) {
+                // Créer la nouvelle question
+                $newQuestion = new FormQuestion();
+                $newQuestion->form_id = $newForm->id;
+                $newQuestion->label = $question->label;
+                $newQuestion->questions_types_id = $question->questions_types_id;
+                $newQuestion->save();
+
+                // Dupliquer les choix de la question
+                if ($question->choices && $question->choices->count() > 0) {
+                    foreach ($question->choices as $choice) {
+                        $newChoice = new Choice();
+                        $newChoice->form_question_id = $newQuestion->id;
+                        $newChoice->text = $choice->text;
+                        $newChoice->save();
+                    }
+                }
+            }
+
+            \DB::commit();
+
+            // Log de débogage
+            \Log::info('Formulaire dupliqué avec succès', [
+                'original_id' => $form->id,
+                'new_id' => $newForm->id,
+                'questions_count' => $newForm->questions()->count()
+            ]);
+
+            return redirect()->route('forms.index')
+                ->with('success', 'Formulaire dupliqué avec succès');
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('Erreur de duplication:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return back()->with('error', 'Erreur lors de la duplication: ' . $e->getMessage());
+        }
+    }
 }
