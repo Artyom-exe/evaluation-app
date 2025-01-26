@@ -10,6 +10,9 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/Components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/Components/ui/dialog";
+import { Input } from "@/Components/ui/input";
+import { Label } from "@/Components/ui/label";
 
 const props = defineProps({
     module: Object,
@@ -127,6 +130,29 @@ const saveStudents = async () => {
         isLoading.value = false;
     }
 };
+
+const showNewProfessorDialog = ref(false);
+const newProfessor = ref({ name: '', email: '' });
+const isCreatingProfessor = ref(false);
+
+const createProfessor = async () => {
+    isCreatingProfessor.value = true;
+    try {
+        await router.post(route('professors.store'), newProfessor.value, {
+            preserveScroll: true,
+            onSuccess: () => {
+                showNewProfessorDialog.value = false;
+                emit('showAlert', 'Professeur ajouté avec succès', 'success');
+                newProfessor.value = { name: '', email: '' };
+            },
+            onError: () => {
+                emit('showAlert', 'Erreur lors de la création du professeur', 'error');
+            }
+        });
+    } finally {
+        isCreatingProfessor.value = false;
+    }
+};
 </script>
 
 <template>
@@ -210,7 +236,18 @@ const saveStudents = async () => {
                         <div class="p-4">
                             <div v-if="activeTab === 'details'" class="space-y-4">
                                 <div class="space-y-2">
-                                    <label class="text-sm font-medium">Professeur</label>
+                                    <div class="flex items-center justify-between">
+                                        <label class="text-sm font-medium">Professeur</label>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            @click="showNewProfessorDialog = true"
+                                            class="text-blue-600 hover:text-blue-700"
+                                        >
+                                            <i class="ri-add-line mr-1"></i>
+                                            Nouveau
+                                        </Button>
+                                    </div>
                                     <Select v-model="formData.professor_id">
                                         <SelectTrigger>
                                             <SelectValue :placeholder="selectedProf.label" />
@@ -226,7 +263,6 @@ const saveStudents = async () => {
                                         </SelectContent>
                                     </Select>
                                 </div>
-
                                 <div class="space-y-2">
                                     <label class="text-sm font-medium">Année</label>
                                     <Select v-model="formData.year_id">
@@ -275,4 +311,32 @@ const saveStudents = async () => {
             </div>
         </div>
     </div>
+
+    <!-- Dialog pour nouveau professeur -->
+    <Dialog :open="showNewProfessorDialog" @close="showNewProfessorDialog = false">
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Nouveau professeur</DialogTitle>
+                <DialogDescription>
+                    Ajouter un nouveau professeur à la liste
+                </DialogDescription>
+            </DialogHeader>
+            <div class="space-y-4">
+                <div class="space-y-2">
+                    <Label for="profName">Nom du professeur</Label>
+                    <Input id="profName" v-model="newProfessor.name" placeholder="Nom complet" />
+                </div>
+                <div class="space-y-2">
+                    <Label for="profEmail">Email</Label>
+                    <Input id="profEmail" v-model="newProfessor.email" type="email" placeholder="Email" />
+                </div>
+            </div>
+            <DialogFooter>
+                <Button variant="outline" @click="showNewProfessorDialog = false">Annuler</Button>
+                <Button @click="createProfessor" :disabled="isCreatingProfessor">
+                    {{ isCreatingProfessor ? 'Création...' : 'Créer' }}
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
 </template>

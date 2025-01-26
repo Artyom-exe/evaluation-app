@@ -13,7 +13,7 @@ import {
 import { Badge } from "@/Components/ui/badge";
 import { Search } from 'lucide-vue-next';
 import ModuleCard from '@/Components/ModuleCard.vue';  // Ajout de l'import
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/Components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/Components/ui/dialog";
 import { Label } from "@/Components/ui/label";
 
 const props = defineProps({
@@ -168,6 +168,29 @@ const closeDialog = () => {
     showNewModuleDialog.value = false;
     newModule.value = { name: '', year_id: '', professor_id: '' };
 };
+
+const showNewProfessorDialog = ref(false);
+const newProfessor = ref({ name: '', email: '' });
+const isCreatingProfessor = ref(false);
+
+const createProfessor = async () => {
+    isCreatingProfessor.value = true;
+    try {
+        const response = await router.post(route('professors.store'), newProfessor.value, {
+            preserveScroll: true,
+            onSuccess: () => {
+                showNewProfessorDialog.value = false;
+                showAlert('Professeur ajouté avec succès', 'success');
+                newProfessor.value = { name: '', email: '' };
+            },
+            onError: () => {
+                showAlert('Erreur lors de la création du professeur', 'error');
+            }
+        });
+    } finally {
+        isCreatingProfessor.value = false;
+    }
+};
 </script>
 
 <template>
@@ -321,6 +344,9 @@ const closeDialog = () => {
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Nouveau module</DialogTitle>
+                    <DialogDescription>
+                        Créer un nouveau module de cours
+                    </DialogDescription>
                 </DialogHeader>
                 <div class="space-y-4">
                     <div class="space-y-2">
@@ -341,7 +367,18 @@ const closeDialog = () => {
                         </Select>
                     </div>
                     <div class="space-y-2">
-                        <Label for="moduleProfessor">Professeur</Label>
+                        <div class="flex items-center justify-between">
+                            <Label for="moduleProfessor">Professeur</Label>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                @click="showNewProfessorDialog = true"
+                                class="text-blue-600 hover:text-blue-700"
+                            >
+                                <i class="ri-add-line mr-1"></i>
+                                Nouveau
+                            </Button>
+                        </div>
                         <Select v-model="newModule.professor_id">
                             <SelectTrigger>
                                 <SelectValue placeholder="Sélectionner un professeur" />
@@ -358,6 +395,34 @@ const closeDialog = () => {
                     <Button variant="outline" @click="closeDialog">Annuler</Button>
                     <Button @click="createModule" :disabled="isCreatingModule">
                         {{ isCreatingModule ? 'Création...' : 'Créer' }}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
+        <!-- Dialog pour nouveau professeur -->
+        <Dialog :open="showNewProfessorDialog" @close="showNewProfessorDialog = false">
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Nouveau professeur</DialogTitle>
+                    <DialogDescription>
+                        Ajouter un nouveau professeur à la liste
+                    </DialogDescription>
+                </DialogHeader>
+                <div class="space-y-4">
+                    <div class="space-y-2">
+                        <Label for="profName">Nom du professeur</Label>
+                        <Input id="profName" v-model="newProfessor.name" placeholder="Nom complet" />
+                    </div>
+                    <div class="space-y-2">
+                        <Label for="profEmail">Email</Label>
+                        <Input id="profEmail" v-model="newProfessor.email" type="email" placeholder="Email" />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" @click="showNewProfessorDialog = false">Annuler</Button>
+                    <Button @click="createProfessor" :disabled="isCreatingProfessor">
+                        {{ isCreatingProfessor ? 'Création...' : 'Créer' }}
                     </Button>
                 </DialogFooter>
             </DialogContent>
