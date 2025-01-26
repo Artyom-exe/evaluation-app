@@ -28,8 +28,12 @@ Route::middleware([
 
     Route::resource('forms', FormController::class);
     Route::post('/forms/{form}/duplicate', [FormController::class, 'duplicate'])->name('forms.duplicate');
-    Route::put('/modules/{module}/students', [ModuleController::class, 'updateStudents'])->name('modules.updateStudents');
-    Route::put('/modules/{module}/professor', [ModuleController::class, 'updateProfessor'])->name('modules.updateProfessor');
-    Route::post('/modules', [ModuleController::class, 'store'])->name('modules.store');
-    Route::delete('/modules/{module}', [ModuleController::class, 'destroy'])->name('modules.destroy');
+
+    // Mise à jour des routes pour les modules
+    Route::prefix('modules')->name('modules.')->group(function () {
+        Route::post('/', [ModuleController::class, 'store'])->name('store');
+        Route::put('{module}/students', [ModuleController::class, 'updateStudents'])->name('updateStudents');
+        Route::put('{module}/update', [ModuleController::class, 'updateProfessorAndYear'])->name('updateProfessorAndYear');
+        Route::delete('{module}', [ModuleController::class, 'destroy'])->name('destroy');
+    });
 });

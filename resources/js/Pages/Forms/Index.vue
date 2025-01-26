@@ -163,6 +163,11 @@ onMounted(() => {
         showAlert(page.errors.error, 'error');
     }
 });
+
+const closeDialog = () => {
+    showNewModuleDialog.value = false;
+    newModule.value = { name: '', year_id: '', professor_id: '' };
+};
 </script>
 
 <template>
@@ -299,19 +304,20 @@ onMounted(() => {
                     Nouveau module
                 </Button>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 <ModuleCard
                     v-for="module in modules"
                     :key="module.id"
                     :module="module"
                     :professors="professors"
+                    :years="years"
                     @show-alert="handleAlert"
                 />
             </div>
         </div>
 
         <!-- Dialog pour nouveau module -->
-        <Dialog :open="showNewModuleDialog" @close="showNewModuleDialog = false">
+        <Dialog :open="showNewModuleDialog" @close="closeDialog">
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Nouveau module</DialogTitle>
@@ -349,7 +355,7 @@ onMounted(() => {
                     </div>
                 </div>
                 <DialogFooter>
-                    <Button variant="outline" @click="showNewModuleDialog = false">Annuler</Button>
+                    <Button variant="outline" @click="closeDialog">Annuler</Button>
                     <Button @click="createModule" :disabled="isCreatingModule">
                         {{ isCreatingModule ? 'Création...' : 'Créer' }}
                     </Button>

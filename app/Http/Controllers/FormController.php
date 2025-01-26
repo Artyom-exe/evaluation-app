@@ -22,7 +22,7 @@ class FormController extends Controller
     {
         return Inertia::render('Forms/Index', [
             'forms' => Form::with(['module.professor', 'module.year'])->get(),
-            'modules' => Module::with(['professor', 'students'])->get(),
+            'modules' => Module::with(['professor', 'year', 'students'])->get(), // Ajout de 'year' dans le with
             'years' => Year::all(),
             'professors' => Professor::all(),
         ]);

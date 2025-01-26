@@ -16,25 +16,23 @@ class ModuleController extends Controller
                 'emails' => 'required|string'
             ]);
 
+            \DB::beginTransaction();
+
             $emails = array_map('trim', explode(',', $validated['emails']));
             $emails = array_filter($emails, 'filter_var', FILTER_VALIDATE_EMAIL);
 
-            \DB::beginTransaction();
-
-            // Supprime les anciennes associations
             $module->students()->detach();
 
-            // Crée ou récupère les étudiants et les associe au module
             foreach ($emails as $email) {
                 $student = Student::firstOrCreate(['email' => $email]);
                 $module->students()->attach($student->id);
             }
 
             \DB::commit();
-            return response()->json(['message' => 'Étudiants mis à jour avec succès']);
+            return redirect()->back()->with('success', 'Étudiants mis à jour avec succès');
         } catch (\Exception $e) {
             \DB::rollBack();
-            return response()->json(['error' => $e->getMessage()], 500);
+            return back()->withErrors(['error' => $e->getMessage()]);
         }
     }
 
@@ -52,6 +50,22 @@ class ModuleController extends Controller
         }
     }
 
+    public function updateProfessorAndYear(Request $request, Module $module)
+    {
+        try {
+            $validated = $request->validate([
+                'professor_id' => 'required|exists:professors,id',
+                'year_id' => 'required|exists:years,id'
+            ]);
+
+            $module->update($validated);
+
+            return redirect()->back()->with('success', 'Module mis à jour avec succès');
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
+        }
+    }
+
     public function store(Request $request)
     {
         try {
@@ -63,12 +77,9 @@ class ModuleController extends Controller
 
             $module = Module::create($validated);
 
-            return response()->json([
-                'message' => 'Module créé avec succès',
-                'module' => $module->load(['professor', 'students'])
-            ]);
+            return redirect()->back()->with('success', 'Module créé avec succès');
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return back()->withErrors(['error' => $e->getMessage()]);
         }
     }
 
