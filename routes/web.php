@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\FormController;
 use App\Http\Controllers\QuestionTypeController;
+use App\Http\Controllers\ModuleController;
 
 
 Route::get('/', function () {
@@ -27,4 +28,8 @@ Route::middleware([
 
     Route::resource('forms', FormController::class);
     Route::post('/forms/{form}/duplicate', [FormController::class, 'duplicate'])->name('forms.duplicate');
+    Route::put('/modules/{module}/students', [ModuleController::class, 'updateStudents'])->name('modules.updateStudents');
+    Route::put('/modules/{module}/professor', [ModuleController::class, 'updateProfessor'])->name('modules.updateProfessor');
+    Route::post('/modules', [ModuleController::class, 'store'])->name('modules.store');
+    Route::delete('/modules/{module}', [ModuleController::class, 'destroy'])->name('modules.destroy');
 });

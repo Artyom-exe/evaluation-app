@@ -10,6 +10,8 @@ use App\Models\QuestionType;
 use App\Models\FormQuestion;
 use App\Models\Choice;
 use Inertia\Inertia;
+use App\Models\Professor;
+
 
 class FormController extends Controller
 {
@@ -20,8 +22,9 @@ class FormController extends Controller
     {
         return Inertia::render('Forms/Index', [
             'forms' => Form::with(['module.professor', 'module.year'])->get(),
-            'modules' => Module::with(['professor', 'year'])->get(),
+            'modules' => Module::with(['professor', 'students'])->get(),
             'years' => Year::all(),
+            'professors' => Professor::all(),
         ]);
     }
 
