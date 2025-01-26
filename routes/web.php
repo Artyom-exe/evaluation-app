@@ -26,4 +26,5 @@ Route::middleware([
     })->name('dashboard');
 
     Route::resource('forms', FormController::class);
+    Route::post('/forms/{form}/duplicate', [FormController::class, 'duplicate'])->name('forms.duplicate');
 });

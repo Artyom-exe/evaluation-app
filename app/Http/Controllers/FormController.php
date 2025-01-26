@@ -128,8 +128,9 @@ class FormController extends Controller
     public function edit(Form $form)
     {
         return Inertia::render('Forms/Edit', [
-            'form' => $form,
-            'modules' => Module::all()
+            'form' => Form::with(['questions.choices', 'questions.questionType'])->find($form->id),
+            'modules' => Module::with('professor')->get(),
+            'questionTypes' => QuestionType::all()
         ]);
     }
 
@@ -139,15 +140,56 @@ class FormController extends Controller
      */
     public function update(Request $request, Form $form)
     {
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'module_id' => 'required|exists:modules,id',
-            'statut' => 'required|in:open,closed',
-        ]);
+        try {
+            $validated = $request->validate([
+                'title' => 'required|string|max:255',
+                'module_id' => 'required|exists:modules,id',
+                'questions' => 'required|array|min:1',
+                'questions.*.type' => 'required|string',
+                'questions.*.label' => 'required|string',
+                'questions.*.options' => 'nullable|array'
+            ]);
 
-        $form->update($request->only(['title', 'module_id', 'statut']));
+            \DB::beginTransaction();
 
-        return redirect()->route('forms.index');
+            // Mise à jour des informations de base du formulaire
+            $form->update([
+                'title' => $validated['title'],
+                'module_id' => $validated['module_id']
+            ]);
+
+            // Suppression des anciennes questions et leurs choix
+            $form->questions()->delete();
+
+            // Création des nouvelles questions
+            foreach ($validated['questions'] as $questionData) {
+                $questionType = QuestionType::where('type', $questionData['type'])->first();
+
+                $question = new FormQuestion([
+                    'label' => $questionData['label'],
+                    'questions_types_id' => $questionType->id
+                ]);
+
+                $form->questions()->save($question);
+
+                // Ajout des options si présentes
+                if (!empty($questionData['options'])) {
+                    foreach ($questionData['options'] as $optionText) {
+                        if (!empty($optionText)) {
+                            $question->choices()->create(['text' => $optionText]);
+                        }
+                    }
+                }
+            }
+
+            \DB::commit();
+            return redirect()->route('forms.index')->with('success', 'Formulaire mis à jour avec succès');
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            return back()->withErrors([
+                'error' => 'Erreur lors de la mise à jour du formulaire: ' . $e->getMessage()
+            ]);
+        }
     }
 
 
@@ -158,5 +200,61 @@ class FormController extends Controller
     {
         $form->delete();
         return redirect()->route('forms.index');
+    }
+
+    public function duplicate(Form $form)
+    {
+        try {
+            \DB::beginTransaction();
+
+            // Chargement explicite des relations nécessaires
+            $form->load(['questions.choices', 'questions.questionType']);
+
+            // Créer une copie du formulaire
+            $newForm = Form::create([
+                'title' => $form->title . ' (copie)',
+                'module_id' => $form->module_id,
+                'statut' => 'open'
+            ]);
+
+            // Dupliquer les questions avec leurs options
+            foreach ($form->questions as $question) {
+                // Créer la nouvelle question
+                $newQuestion = new FormQuestion();
+                $newQuestion->form_id = $newForm->id;
+                $newQuestion->label = $question->label;
+                $newQuestion->questions_types_id = $question->questions_types_id;
+                $newQuestion->save();
+
+                // Dupliquer les choix de la question
+                if ($question->choices && $question->choices->count() > 0) {
+                    foreach ($question->choices as $choice) {
+                        $newChoice = new Choice();
+                        $newChoice->form_question_id = $newQuestion->id;
+                        $newChoice->text = $choice->text;
+                        $newChoice->save();
+                    }
+                }
+            }
+
+            \DB::commit();
+
+            // Log de débogage
+            \Log::info('Formulaire dupliqué avec succès', [
+                'original_id' => $form->id,
+                'new_id' => $newForm->id,
+                'questions_count' => $newForm->questions()->count()
+            ]);
+
+            return redirect()->route('forms.index')
+                ->with('success', 'Formulaire dupliqué avec succès');
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('Erreur de duplication:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return back()->with('error', 'Erreur lors de la duplication: ' . $e->getMessage());
+        }
     }
 }
