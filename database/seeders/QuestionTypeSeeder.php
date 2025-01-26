@@ -9,7 +9,31 @@ class QuestionTypeSeeder extends Seeder
 {
     public function run()
     {
-        QuestionType::create(['type' => 'text', 'label' => 'Open-ended question']);
-        QuestionType::create(['type' => 'radio', 'label' => 'Single choice']);
+        $types = [
+            [
+                'type' => 'text',
+                'label' => 'Texte court',
+                'icon' => 'ri-text'
+            ],
+            [
+                'type' => 'textarea',
+                'label' => 'Texte long',
+                'icon' => 'ri-text-wrap'
+            ],
+            [
+                'type' => 'radio',
+                'label' => 'Choix unique',
+                'icon' => 'ri-radio-button-line'
+            ],
+            [
+                'type' => 'checkbox',
+                'label' => 'Choix multiples',
+                'icon' => 'ri-checkbox-multiple-line'
+            ]
+        ];
+
+        foreach ($types as $type) {
+            QuestionType::create($type);
+        }
     }
 }
