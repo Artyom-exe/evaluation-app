@@ -13,14 +13,13 @@ return new class extends Migration
     {
         Schema::create('choices', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('form_question_id')->constrained('form_questions')->onDelete('cascade');
-            $table->string('value'); // Internal value for the choice
-            $table->string('label'); // Label shown to the user
-            $table->integer('order')->default(0); // Order of the choice
+            $table->foreignId('form_question_id')
+                ->constrained('form_questions')
+                ->onDelete('cascade');
+            $table->text('text');  // Changé de 'value' et 'label' à simplement 'text'
             $table->timestamps();
         });
     }
-
 
     /**
      * Reverse the migrations.
