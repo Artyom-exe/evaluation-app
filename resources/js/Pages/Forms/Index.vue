@@ -90,10 +90,42 @@ const getStatusText = (status) => ({
     'open': 'Ouvert',
     'closed': 'Fermé'
 }[status]);
+
+// Ajout de la fonction showAlert
+const alertMessage = ref(null);
+const showAlert = (message, type = 'success') => {
+    alertMessage.value = { message, type };
+    setTimeout(() => {
+        alertMessage.value = null;
+    }, 3000);
+};
+
+const duplicate = (form) => {
+    if (confirm('Voulez-vous dupliquer ce formulaire ?')) {
+        router.post(route('forms.duplicate', form.id), {}, {
+            onSuccess: () => {
+                showAlert('Formulaire dupliqué avec succès');
+            },
+            onError: () => {
+                showAlert('Erreur lors de la duplication', 'error');
+            }
+        });
+    }
+};
 </script>
 
 <template>
     <div class="p-6 space-y-6">
+        <!-- Ajout de l'alerte -->
+        <div v-if="alertMessage"
+             :class="[
+                'fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 transition-all duration-500',
+                alertMessage.type === 'error' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'
+             ]"
+        >
+            {{ alertMessage.message }}
+        </div>
+
         <div class="flex justify-between items-center bg-gray-50 p-4 rounded-lg">
             <h1 class="text-2xl font-semibold">Liste des formulaires d'évaluation</h1>
         </div>
@@ -184,6 +216,14 @@ const getStatusText = (status) => ({
                                     <Link :href="`/forms/${form.id}/results`">
                                         <i class="ri-bar-chart-line text-base text-purple-500 hover:text-purple-600"></i>
                                     </Link>
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    @click="duplicate(form)"
+                                    title="Dupliquer"
+                                >
+                                    <i class="ri-file-copy-line"></i>
                                 </Button>
                                 <Button
                                     variant="outline"
