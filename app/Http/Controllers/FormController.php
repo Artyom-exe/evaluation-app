@@ -128,8 +128,9 @@ class FormController extends Controller
     public function edit(Form $form)
     {
         return Inertia::render('Forms/Edit', [
-            'form' => $form,
-            'modules' => Module::all()
+            'form' => Form::with(['questions.choices', 'questions.questionType'])->find($form->id),
+            'modules' => Module::with('professor')->get(),
+            'questionTypes' => QuestionType::all()
         ]);
     }
 
@@ -139,15 +140,56 @@ class FormController extends Controller
      */
     public function update(Request $request, Form $form)
     {
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'module_id' => 'required|exists:modules,id',
-            'statut' => 'required|in:open,closed',
-        ]);
+        try {
+            $validated = $request->validate([
+                'title' => 'required|string|max:255',
+                'module_id' => 'required|exists:modules,id',
+                'questions' => 'required|array|min:1',
+                'questions.*.type' => 'required|string',
+                'questions.*.label' => 'required|string',
+                'questions.*.options' => 'nullable|array'
+            ]);
 
-        $form->update($request->only(['title', 'module_id', 'statut']));
+            \DB::beginTransaction();
 
-        return redirect()->route('forms.index');
+            // Mise à jour des informations de base du formulaire
+            $form->update([
+                'title' => $validated['title'],
+                'module_id' => $validated['module_id']
+            ]);
+
+            // Suppression des anciennes questions et leurs choix
+            $form->questions()->delete();
+
+            // Création des nouvelles questions
+            foreach ($validated['questions'] as $questionData) {
+                $questionType = QuestionType::where('type', $questionData['type'])->first();
+
+                $question = new FormQuestion([
+                    'label' => $questionData['label'],
+                    'questions_types_id' => $questionType->id
+                ]);
+
+                $form->questions()->save($question);
+
+                // Ajout des options si présentes
+                if (!empty($questionData['options'])) {
+                    foreach ($questionData['options'] as $optionText) {
+                        if (!empty($optionText)) {
+                            $question->choices()->create(['text' => $optionText]);
+                        }
+                    }
+                }
+            }
+
+            \DB::commit();
+            return redirect()->route('forms.index')->with('success', 'Formulaire mis à jour avec succès');
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            return back()->withErrors([
+                'error' => 'Erreur lors de la mise à jour du formulaire: ' . $e->getMessage()
+            ]);
+        }
     }
 
 
