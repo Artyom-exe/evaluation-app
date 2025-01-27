@@ -15,6 +15,7 @@ import { Search } from 'lucide-vue-next';
 import ModuleCard from '@/Components/ModuleCard.vue';  // Ajout de l'import
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/Components/ui/dialog";
 import { Label } from "@/Components/ui/label";
+import AppLayout from '@/Layouts/AppLayout.vue';
 
 const props = defineProps({
     forms: Array,
@@ -194,238 +195,240 @@ const createProfessor = async () => {
 </script>
 
 <template>
-    <div class="p-6 space-y-6">
-        <!-- Modifier l'alerte pour s'assurer qu'elle est bien visible -->
-        <div v-if="alertMessage"
-             :class="[
-                'fixed top-4 right-4 p-4 rounded-lg shadow-lg z-[9999] transition-all duration-500',
-                alertMessage.type === 'error' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'
-             ]"
-        >
-            {{ alertMessage.message }}
-        </div>
-
-        <div class="flex justify-between items-center bg-gray-50 p-4 rounded-lg">
-            <h1 class="text-2xl font-semibold">Liste des formulaires d'évaluation</h1>
-        </div>
-
-        <div class="flex gap-4 items-center bg-white p-4 rounded-lg border">
-            <div class="relative flex-1 max-w-sm">
-                <Search class="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
-                <Input
-                    v-model.trim="searchQuery"
-                    type="search"
-                    placeholder="Rechercher un formulaire..."
-                    class="pl-8"
-                />
+    <AppLayout title="Formulaires">
+        <div class="p-6 space-y-6">
+            <!-- Modifier l'alerte pour s'assurer qu'elle est bien visible -->
+            <div v-if="alertMessage"
+                :class="[
+                    'fixed top-4 right-4 p-4 rounded-lg shadow-lg z-[9999] transition-all duration-500',
+                    alertMessage.type === 'error' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'
+                ]"
+            >
+                {{ alertMessage.message }}
             </div>
 
-            <Select v-model="selectedModule">
-                <SelectTrigger class="w-[200px]">
-                    <SelectValue placeholder="Filtrer par module" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">Tous les modules</SelectItem>
-                    <SelectItem
+            <div class="flex justify-between items-center bg-gray-50 p-4 rounded-lg">
+                <h1 class="text-2xl font-semibold">Liste des formulaires d'évaluation</h1>
+            </div>
+
+            <div class="flex gap-4 items-center bg-white p-4 rounded-lg border">
+                <div class="relative flex-1 max-w-sm">
+                    <Search class="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+                    <Input
+                        v-model.trim="searchQuery"
+                        type="search"
+                        placeholder="Rechercher un formulaire..."
+                        class="pl-8"
+                    />
+                </div>
+
+                <Select v-model="selectedModule">
+                    <SelectTrigger class="w-[200px]">
+                        <SelectValue placeholder="Filtrer par module" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Tous les modules</SelectItem>
+                        <SelectItem
+                            v-for="module in modules"
+                            :key="module.id"
+                            :value="module.id.toString()"
+                        >
+                            {{ module.name }}
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
+
+                <Select v-model="selectedYear">
+                    <SelectTrigger class="w-[200px]">
+                        <SelectValue placeholder="Filtrer par année" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Toutes les années</SelectItem>
+                        <SelectItem
+                            v-for="year in years"
+                            :key="year.id"
+                            :value="year.id.toString()"
+                        >
+                            {{ year.name }}
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
+
+                <Link href="/forms/create" class="ml-auto">
+                    <Button>Nouveau formulaire</Button>
+                </Link>
+            </div>
+
+            <div class="bg-white rounded-lg border">
+                <table class="w-full">
+                    <thead>
+                        <tr class="bg-gray-50 border-b">
+                            <th class="text-left p-4 font-medium">Titre</th>
+                            <th class="text-left p-4 font-medium">Module</th>
+                            <th class="text-left p-4 font-medium">Professeur</th>
+                            <th class="text-left p-4 font-medium">Année</th>
+                            <th class="text-left p-4 font-medium">Statut</th>
+                            <th class="text-right p-4 font-medium">Actions</th>
+                        </tr>
+                        </thead>
+                    <tbody>
+                        <tr v-for="form in filteredForms" :key="form.id" class="border-b last:border-b-0">
+                            <td class="p-4">{{ form.title }}</td>
+                            <td class="p-4">{{ form.module.name }}</td>
+                            <td class="p-4">{{ form.module.professor.name }}</td>
+                            <td class="p-4">{{ form.module.year.name }}</td>
+                            <td class="p-4">
+                                <Badge :variant="form.statut === 'open' ? 'success' : 'destructive'" class="gap-2 px-3 py-1">
+                                    <i :class="[
+                                        form.statut === 'open' ? 'ri-checkbox-circle-line' : 'ri-close-circle-line',
+                                        form.statut === 'open' ? 'text-green-500' : 'text-red-500'
+                                    ]"></i>
+                                    {{ getStatusText(form.statut) }}
+                                </Badge>
+                            </td>
+                            <td class="p-4">
+                                <div class="flex gap-2 justify-end">
+                                    <Button variant="outline" size="sm" asChild>
+                                        <Link :href="`/forms/${form.id}/edit`">
+                                            <i class="ri-edit-line text-base text-blue-500 hover:text-blue-600"></i>
+                                        </Link>
+                                    </Button>
+                                    <Button variant="outline" size="sm" asChild>
+                                        <Link :href="`/forms/${form.id}/results`">
+                                            <i class="ri-bar-chart-line text-base text-purple-500 hover:text-purple-600"></i>
+                                        </Link>
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        @click="duplicate(form)"
+                                        title="Dupliquer"
+                                    >
+                                        <i class="ri-file-copy-line"></i>
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        @click="deleteForm(form.id)"
+                                    >
+                                        <i class="ri-delete-bin-line text-base text-red-500 hover:text-red-600"></i>
+                                    </Button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Section des modules -->
+            <div class="mt-8">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-semibold">Modules</h2>
+                    <Button @click="showNewModuleDialog = true">
+                        <i class="ri-add-line mr-2"></i>
+                        Nouveau module
+                    </Button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                    <ModuleCard
                         v-for="module in modules"
                         :key="module.id"
-                        :value="module.id.toString()"
-                    >
-                        {{ module.name }}
-                    </SelectItem>
-                </SelectContent>
-            </Select>
+                        :module="module"
+                        :professors="professors"
+                        :years="years"
+                        @show-alert="handleAlert"
+                    />
+                </div>
+            </div>
 
-            <Select v-model="selectedYear">
-                <SelectTrigger class="w-[200px]">
-                    <SelectValue placeholder="Filtrer par année" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">Toutes les années</SelectItem>
-                    <SelectItem
-                        v-for="year in years"
-                        :key="year.id"
-                        :value="year.id.toString()"
-                    >
-                        {{ year.name }}
-                    </SelectItem>
-                </SelectContent>
-            </Select>
-
-            <Link href="/forms/create" class="ml-auto">
-                <Button>Nouveau formulaire</Button>
-            </Link>
-        </div>
-
-        <div class="bg-white rounded-lg border">
-            <table class="w-full">
-                <thead>
-                    <tr class="bg-gray-50 border-b">
-                        <th class="text-left p-4 font-medium">Titre</th>
-                        <th class="text-left p-4 font-medium">Module</th>
-                        <th class="text-left p-4 font-medium">Professeur</th>
-                        <th class="text-left p-4 font-medium">Année</th>
-                        <th class="text-left p-4 font-medium">Statut</th>
-                        <th class="text-right p-4 font-medium">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="form in filteredForms" :key="form.id" class="border-b last:border-b-0">
-                        <td class="p-4">{{ form.title }}</td>
-                        <td class="p-4">{{ form.module.name }}</td>
-                        <td class="p-4">{{ form.module.professor.name }}</td>
-                        <td class="p-4">{{ form.module.year.name }}</td>
-                        <td class="p-4">
-                            <Badge :variant="form.statut === 'open' ? 'success' : 'destructive'" class="gap-2 px-3 py-1">
-                                <i :class="[
-                                    form.statut === 'open' ? 'ri-checkbox-circle-line' : 'ri-close-circle-line',
-                                    form.statut === 'open' ? 'text-green-500' : 'text-red-500'
-                                ]"></i>
-                                {{ getStatusText(form.statut) }}
-                            </Badge>
-                        </td>
-                        <td class="p-4">
-                            <div class="flex gap-2 justify-end">
-                                <Button variant="outline" size="sm" asChild>
-                                    <Link :href="`/forms/${form.id}/edit`">
-                                        <i class="ri-edit-line text-base text-blue-500 hover:text-blue-600"></i>
-                                    </Link>
-                                </Button>
-                                <Button variant="outline" size="sm" asChild>
-                                    <Link :href="`/forms/${form.id}/results`">
-                                        <i class="ri-bar-chart-line text-base text-purple-500 hover:text-purple-600"></i>
-                                    </Link>
-                                </Button>
+            <!-- Dialog pour nouveau module -->
+            <Dialog :open="showNewModuleDialog" @close="closeDialog">
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Nouveau module</DialogTitle>
+                        <DialogDescription>
+                            Créer un nouveau module de cours
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div class="space-y-4">
+                        <div class="space-y-2">
+                            <Label for="moduleName">Nom du module</Label>
+                            <Input id="moduleName" v-model="newModule.name" placeholder="Nom du module" />
+                        </div>
+                        <div class="space-y-2">
+                            <Label for="moduleYear">Année</Label>
+                            <Select v-model="newModule.year_id">
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Sélectionner une année" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem v-for="year in years" :key="year.id" :value="year.id.toString()">
+                                        {{ year.name }}
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between">
+                                <Label for="moduleProfessor">Professeur</Label>
                                 <Button
-                                    variant="outline"
+                                    variant="ghost"
                                     size="sm"
-                                    @click="duplicate(form)"
-                                    title="Dupliquer"
+                                    @click="showNewProfessorDialog = true"
+                                    class="text-blue-600 hover:text-blue-700"
                                 >
-                                    <i class="ri-file-copy-line"></i>
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    @click="deleteForm(form.id)"
-                                >
-                                    <i class="ri-delete-bin-line text-base text-red-500 hover:text-red-600"></i>
+                                    <i class="ri-add-line mr-1"></i>
+                                    Nouveau
                                 </Button>
                             </div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Section des modules -->
-        <div class="mt-8">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-2xl font-semibold">Modules</h2>
-                <Button @click="showNewModuleDialog = true">
-                    <i class="ri-add-line mr-2"></i>
-                    Nouveau module
-                </Button>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                <ModuleCard
-                    v-for="module in modules"
-                    :key="module.id"
-                    :module="module"
-                    :professors="professors"
-                    :years="years"
-                    @show-alert="handleAlert"
-                />
-            </div>
-        </div>
-
-        <!-- Dialog pour nouveau module -->
-        <Dialog :open="showNewModuleDialog" @close="closeDialog">
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Nouveau module</DialogTitle>
-                    <DialogDescription>
-                        Créer un nouveau module de cours
-                    </DialogDescription>
-                </DialogHeader>
-                <div class="space-y-4">
-                    <div class="space-y-2">
-                        <Label for="moduleName">Nom du module</Label>
-                        <Input id="moduleName" v-model="newModule.name" placeholder="Nom du module" />
-                    </div>
-                    <div class="space-y-2">
-                        <Label for="moduleYear">Année</Label>
-                        <Select v-model="newModule.year_id">
-                            <SelectTrigger>
-                                <SelectValue placeholder="Sélectionner une année" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem v-for="year in years" :key="year.id" :value="year.id.toString()">
-                                    {{ year.name }}
-                                </SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div class="space-y-2">
-                        <div class="flex items-center justify-between">
-                            <Label for="moduleProfessor">Professeur</Label>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                @click="showNewProfessorDialog = true"
-                                class="text-blue-600 hover:text-blue-700"
-                            >
-                                <i class="ri-add-line mr-1"></i>
-                                Nouveau
-                            </Button>
+                            <Select v-model="newModule.professor_id">
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Sélectionner un professeur" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem v-for="professor in professors" :key="professor.id" :value="professor.id.toString()">
+                                        {{ professor.name }}
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
-                        <Select v-model="newModule.professor_id">
-                            <SelectTrigger>
-                                <SelectValue placeholder="Sélectionner un professeur" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem v-for="professor in professors" :key="professor.id" :value="professor.id.toString()">
-                                    {{ professor.name }}
-                                </SelectItem>
-                            </SelectContent>
-                        </Select>
                     </div>
-                </div>
-                <DialogFooter>
-                    <Button variant="outline" @click="closeDialog">Annuler</Button>
-                    <Button @click="createModule" :disabled="isCreatingModule">
-                        {{ isCreatingModule ? 'Création...' : 'Créer' }}
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+                    <DialogFooter>
+                        <Button variant="outline" @click="closeDialog">Annuler</Button>
+                        <Button @click="createModule" :disabled="isCreatingModule">
+                            {{ isCreatingModule ? 'Création...' : 'Créer' }}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
-        <!-- Dialog pour nouveau professeur -->
-        <Dialog :open="showNewProfessorDialog" @close="showNewProfessorDialog = false">
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Nouveau professeur</DialogTitle>
-                    <DialogDescription>
-                        Ajouter un nouveau professeur à la liste
-                    </DialogDescription>
-                </DialogHeader>
-                <div class="space-y-4">
-                    <div class="space-y-2">
-                        <Label for="profName">Nom du professeur</Label>
-                        <Input id="profName" v-model="newProfessor.name" placeholder="Nom complet" />
+            <!-- Dialog pour nouveau professeur -->
+            <Dialog :open="showNewProfessorDialog" @close="showNewProfessorDialog = false">
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Nouveau professeur</DialogTitle>
+                        <DialogDescription>
+                            Ajouter un nouveau professeur à la liste
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div class="space-y-4">
+                        <div class="space-y-2">
+                            <Label for="profName">Nom du professeur</Label>
+                            <Input id="profName" v-model="newProfessor.name" placeholder="Nom complet" />
+                        </div>
+                        <div class="space-y-2">
+                            <Label for="profEmail">Email</Label>
+                            <Input id="profEmail" v-model="newProfessor.email" type="email" placeholder="Email" />
+                        </div>
                     </div>
-                    <div class="space-y-2">
-                        <Label for="profEmail">Email</Label>
-                        <Input id="profEmail" v-model="newProfessor.email" type="email" placeholder="Email" />
-                    </div>
-                </div>
-                <DialogFooter>
-                    <Button variant="outline" @click="showNewProfessorDialog = false">Annuler</Button>
-                    <Button @click="createProfessor" :disabled="isCreatingProfessor">
-                        {{ isCreatingProfessor ? 'Création...' : 'Créer' }}
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    </div>
+                    <DialogFooter>
+                        <Button variant="outline" @click="showNewProfessorDialog = false">Annuler</Button>
+                        <Button @click="createProfessor" :disabled="isCreatingProfessor">
+                            {{ isCreatingProfessor ? 'Création...' : 'Créer' }}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div>
+    </AppLayout>
 </template>
