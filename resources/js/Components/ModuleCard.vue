@@ -156,166 +156,225 @@ const createProfessor = async () => {
         isCreatingProfessor.value = false;
     }
 };
+
+const showImagePreview = ref(false);
+const isHovered = ref(false);
+
+// Ajout de computed properties pour une meilleure gestion des états
+const cardStateClass = computed(() => ({
+    'transform scale-100 shadow-lg': isExpanded.value || isHovered.value,
+    'transform scale-98 hover:scale-100': !isExpanded.value,
+    'opacity-95 hover:opacity-100': !isExpanded.value,
+}));
+
+const statusIndicator = computed(() => {
+    if (!props.module.professor) return { color: 'bg-yellow-400', text: 'En attente de professeur' };
+    if (!props.module.students?.length) return { color: 'bg-orange-400', text: 'Sans étudiants' };
+    return { color: 'bg-green-400', text: 'Actif' };
+});
 </script>
 
 <template>
-    <div class="bg-white rounded-lg shadow-lg overflow-hidden transition-all duration-300 ease-out"
-         :class="{ 'h-auto scale-100 opacity-100': isExpanded, 'h-[260px] scale-98 opacity-95': !isExpanded }">
-        <div class="relative" :class="{ 'h-full': !isExpanded }">
-            <!-- Header non-expansé -->
-            <div v-if="!isExpanded" class="h-full flex flex-col">
-                <div class="cursor-pointer group flex-1" @click="isExpanded = true">
-                    <div class="aspect-w-16 aspect-h-9 mb-4 rounded-lg overflow-hidden">
-                        <img
-                            :src="module.image_path || '/images/default-module.jpg'"
-                            :alt="module.name"
-                            class="object-cover w-full h-full"
-                        />
+    <div class="relative bg-white rounded-lg overflow-hidden transition-all duration-300 ease-out"
+         :class="cardStateClass"
+         @mouseenter="isHovered = true"
+         @mouseleave="isHovered = false">
+
+        <!-- Status indicator -->
+        <div class="absolute top-2 left-2 z-10 flex items-center gap-2">
+            <span class="flex items-center gap-1.5">
+                <span :class="[statusIndicator.color, 'w-2 h-2 rounded-full']"></span>
+                <span class="text-xs font-medium text-gray-600 bg-white/90 px-2 py-0.5 rounded-full">
+                    {{ statusIndicator.text }}
+                </span>
+            </span>
+        </div>
+
+        <!-- Non-expanded view -->
+        <div v-if="!isExpanded" class="h-full">
+            <div class="cursor-pointer group" @click="isExpanded = true">
+                <!-- Image container avec preview -->
+                <div class="relative aspect-w-16 aspect-h-9 group">
+                    <img :src="module.image_path || defaultImage"
+                         :alt="module.name"
+                         class="object-cover w-full h-full transition-transform duration-300"
+                         :class="{'scale-105': isHovered}"
+                    />
+                    <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <Button variant="secondary" class="bg-white/90 hover:bg-white">
+                            <i class="ri-edit-line mr-1"></i>
+                            Modifier
+                        </Button>
                     </div>
-                    <div class="p-4 space-y-3">
-                        <h3 class="text-base font-semibold group-hover:text-blue-600 line-clamp-1">{{ module.name }}</h3>
+                </div>
+
+                <!-- Content -->
+                <div class="p-4 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-base font-semibold group-hover:text-blue-600 line-clamp-1">
+                            {{ module.name }}
+                        </h3>
+                    </div>
+
+                    <!-- Info grid -->
+                    <div class="grid grid-cols-2 gap-3">
                         <div class="space-y-1">
                             <div class="flex items-center gap-2 text-sm text-gray-600">
-                                <i class="ri-user-line w-4 flex-shrink-0"></i>
-                                <span class="truncate">{{ module.professor?.name || 'Aucun professeur' }}</span>
+                                <i class="ri-user-line w-4"></i>
+                                <span class="truncate">{{ module.professor?.name || 'Non assigné' }}</span>
                             </div>
                             <div class="flex items-center gap-2 text-sm text-gray-600">
-                                <i class="ri-calendar-line w-4 flex-shrink-0"></i>
-                                <span class="truncate">{{ module.year?.name || 'Année non définie' }}</span>
+                                <i class="ri-calendar-line w-4"></i>
+                                <span class="truncate">{{ module.year?.name || 'Non défini' }}</span>
                             </div>
-                            <div class="flex items-center gap-2 text-sm text-gray-500">
-                                <i class="ri-team-line w-4 flex-shrink-0"></i>
-                                <span class="truncate">{{ module.students?.length || 0 }} étudiants</span>
+                        </div>
+                        <div class="flex flex-col items-end justify-center">
+                            <div class="text-2xl font-semibold text-gray-900">
+                                {{ module.students?.length || 0 }}
+                            </div>
+                            <div class="text-sm text-gray-500">Étudiants</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Expanded view -->
+        <div v-else>
+            <div class="flex flex-col">
+                <!-- En-tête -->
+                <div class="flex items-center justify-between p-4 border-b">
+                    <h3 class="text-lg font-semibold">{{ module.name }}</h3>
+                    <Button variant="ghost" size="sm" @click="isExpanded = false">
+                        <i class="ri-close-line"></i>
+                    </Button>
+                </div>
+
+                <!-- Onglets -->
+                <div class="flex border-b">
+                    <button v-for="tab in ['details', 'students']"
+                            :key="tab"
+                            @click="activeTab = tab"
+                            class="flex-1 px-4 py-2 border-b-2 transition-colors text-sm font-medium"
+                            :class="[
+                                activeTab === tab
+                                    ? 'border-blue-500 text-blue-600 bg-blue-50/50'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                            ]"
+                    >
+                        <i :class="tab === 'details' ? 'ri-settings-4-line mr-1' : 'ri-team-line mr-1'"></i>
+                        {{ tab === 'details' ? 'Détails' : 'Étudiants' }}
+                    </button>
+                </div>
+
+                <!-- Contenu des onglets avec scroll contrôlé -->
+                <div class="flex-1">
+                    <div class="p-4">
+                        <div v-if="activeTab === 'details'" class="space-y-4">
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <label class="text-sm font-medium">Professeur</label>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        @click="showNewProfessorDialog = true"
+                                        class="text-blue-600 hover:text-blue-700"
+                                    >
+                                        <i class="ri-add-line mr-1"></i>
+                                        Nouveau
+                                    </Button>
+                                </div>
+                                <Select v-model="formData.professor_id">
+                                    <SelectTrigger>
+                                        <SelectValue :placeholder="selectedProf.label" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem
+                                            v-for="professor in professors"
+                                            :key="professor.id"
+                                            :value="professor.id.toString()"
+                                        >
+                                            {{ professor.name }}
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium">Année</label>
+                                <Select v-model="formData.year_id">
+                                    <SelectTrigger>
+                                        <SelectValue :placeholder="selectedYear.label" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem
+                                            v-for="year in years"
+                                            :key="year.id"
+                                            :value="year.id.toString()"
+                                        >
+                                            {{ year.name }}
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        <div v-else-if="activeTab === 'students'" class="space-y-4">
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium">Emails des étudiants</label>
+                                <Textarea
+                                    v-model="formData.studentEmails"
+                                    placeholder="Entrez les emails séparés par des virgules"
+                                    rows="8"
+                                />
                             </div>
                         </div>
                     </div>
                 </div>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    @click.stop="deleteModule"
-                    class="absolute top-2 right-2 text-red-500 hover:text-red-700 bg-white/80 hover:bg-white"
-                >
-                    <i class="ri-delete-bin-line"></i>
-                </Button>
-            </div>
 
-            <!-- Contenu expansé -->
-            <div v-else class="bg-white w-full transition-all duration-300 ease-out"
-                 :class="{ 'opacity-100 translate-y-0': isExpanded, 'opacity-0 -translate-y-4': !isExpanded }">
-                <div class="flex flex-col">
-                    <!-- En-tête -->
-                    <div class="flex items-center justify-between p-4 border-b">
-                        <h3 class="text-lg font-semibold">{{ module.name }}</h3>
-                        <Button variant="ghost" size="sm" @click="isExpanded = false">
-                            <i class="ri-close-line"></i>
-                        </Button>
+                <!-- Actions avec position fixe -->
+                <div class="border-t p-4 bg-gray-50 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm text-gray-500">
+                            Dernière modification: {{ new Date(module.updated_at).toLocaleDateString() }}
+                        </span>
                     </div>
-
-                    <!-- Onglets -->
-                    <div class="flex border-b">
-                        <button
-                            @click="activeTab = 'details'"
-                            :class="[
-                                'px-4 py-2 border-b-2 transition-colors',
-                                activeTab === 'details'
-                                    ? 'border-blue-500 text-blue-600'
-                                    : 'border-transparent hover:border-gray-300'
-                            ]"
-                        >
-                            Détails
-                        </button>
-                        <button
-                            @click="activeTab = 'students'"
-                            :class="[
-                                'px-4 py-2 border-b-2 transition-colors',
-                                activeTab === 'students'
-                                    ? 'border-blue-500 text-blue-600'
-                                    : 'border-transparent hover:border-gray-300'
-                            ]"
-                        >
-                            Étudiants
-                        </button>
-                    </div>
-
-                    <!-- Contenu des onglets avec scroll contrôlé -->
-                    <div class="flex-1">
-                        <div class="p-4">
-                            <div v-if="activeTab === 'details'" class="space-y-4">
-                                <div class="space-y-2">
-                                    <div class="flex items-center justify-between">
-                                        <label class="text-sm font-medium">Professeur</label>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            @click="showNewProfessorDialog = true"
-                                            class="text-blue-600 hover:text-blue-700"
-                                        >
-                                            <i class="ri-add-line mr-1"></i>
-                                            Nouveau
-                                        </Button>
-                                    </div>
-                                    <Select v-model="formData.professor_id">
-                                        <SelectTrigger>
-                                            <SelectValue :placeholder="selectedProf.label" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem
-                                                v-for="professor in professors"
-                                                :key="professor.id"
-                                                :value="professor.id.toString()"
-                                            >
-                                                {{ professor.name }}
-                                            </SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div class="space-y-2">
-                                    <label class="text-sm font-medium">Année</label>
-                                    <Select v-model="formData.year_id">
-                                        <SelectTrigger>
-                                            <SelectValue :placeholder="selectedYear.label" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem
-                                                v-for="year in years"
-                                                :key="year.id"
-                                                :value="year.id.toString()"
-                                            >
-                                                {{ year.name }}
-                                            </SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-
-                            <div v-else-if="activeTab === 'students'" class="space-y-4">
-                                <div class="space-y-2">
-                                    <label class="text-sm font-medium">Emails des étudiants</label>
-                                    <Textarea
-                                        v-model="formData.studentEmails"
-                                        placeholder="Entrez les emails séparés par des virgules"
-                                        rows="8"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Actions avec position fixe -->
-                    <div class="border-t p-4 flex justify-end gap-2 bg-gray-50">
+                    <div class="flex items-center gap-2">
                         <Button variant="outline" @click="isExpanded = false">
                             Annuler
                         </Button>
                         <Button
                             @click="saveChanges"
                             :disabled="isLoading || (!hasChanges && !hasStudentChanges)"
+                            :class="{'opacity-50': !hasChanges && !hasStudentChanges}"
                         >
+                            <i class="ri-save-line mr-1"></i>
                             {{ isLoading ? 'Enregistrement...' : 'Enregistrer' }}
                         </Button>
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- Quick actions -->
+        <div v-if="!isExpanded"
+             class="absolute top-2 right-2 flex items-center gap-1 opacity-0 transition-opacity"
+             :class="{'opacity-100': isHovered}">
+            <Button
+                variant="ghost"
+                size="sm"
+                class="bg-white/90 hover:bg-white shadow-sm"
+                @click.stop="isExpanded = true"
+            >
+                <i class="ri-edit-line"></i>
+            </Button>
+            <Button
+                variant="ghost"
+                size="sm"
+                class="bg-white/90 hover:bg-red-50 text-red-500 hover:text-red-600 shadow-sm"
+                @click.stop="deleteModule"
+            >
+                <i class="ri-delete-bin-line"></i>
+            </Button>
         </div>
     </div>
 
@@ -347,3 +406,20 @@ const createProfessor = async () => {
         </DialogContent>
     </Dialog>
 </template>
+
+<style scoped>
+.scale-98 {
+    transform: scale(0.98);
+}
+
+.card-transition-enter-active,
+.card-transition-leave-active {
+    transition: all 0.3s ease;
+}
+
+.card-transition-enter-from,
+.card-transition-leave-to {
+    opacity: 0;
+    transform: scale(0.95);
+}
+</style>
