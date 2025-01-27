@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onUnmounted } from 'vue';
+import { ref, computed, watch, onUnmounted, onMounted } from 'vue';
 import { Link, router } from '@inertiajs/vue3';  // Ajout de router ici
 import { Button } from '@/Components/ui/button';
 import { Input } from "@/Components/ui/input";
@@ -12,11 +12,15 @@ import {
 } from "@/Components/ui/select";
 import { Badge } from "@/Components/ui/badge";
 import { Search } from 'lucide-vue-next';
+import ModuleCard from '@/Components/ModuleCard.vue';  // Ajout de l'import
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/Components/ui/dialog";
+import { Label } from "@/Components/ui/label";
 
 const props = defineProps({
     forms: Array,
     modules: Array,
-    years: Array
+    years: Array,
+    professors: Array
 });
 
 // Fonction pour obtenir les valeurs du localStorage avec valeur par défaut
@@ -91,14 +95,15 @@ const getStatusText = (status) => ({
     'closed': 'Fermé'
 }[status]);
 
-// Ajout de la fonction showAlert
-const alertMessage = ref(null);
+// Modifier la fonction showAlert pour augmenter la durée d'affichage
 const showAlert = (message, type = 'success') => {
     alertMessage.value = { message, type };
     setTimeout(() => {
         alertMessage.value = null;
-    }, 3000);
+    }, 5000); // Augmenté à 5 secondes pour une meilleure visibilité
 };
+
+const alertMessage = ref(null);
 
 const duplicate = (form) => {
     if (confirm('Voulez-vous dupliquer ce formulaire ?')) {
@@ -112,14 +117,88 @@ const duplicate = (form) => {
         });
     }
 };
+
+const showNewModuleDialog = ref(false);
+const isCreatingModule = ref(false);
+const newModule = ref({
+    name: '',
+    year_id: '',
+    professor_id: ''
+});
+
+const createModule = async () => {
+    isCreatingModule.value = true;
+    try {
+        await router.post(route('modules.store'), newModule.value, {
+            preserveScroll: true,
+            onSuccess: () => {
+                showNewModuleDialog.value = false;
+                showAlert('Module créé avec succès');
+                newModule.value = { name: '', year_id: '', professor_id: '' };
+            },
+            onError: () => {
+                showAlert('Erreur lors de la création du module', 'error');
+            }
+        });
+    } finally {
+        isCreatingModule.value = false;
+    }
+};
+
+const handleAlert = (message, type = 'success') => {
+    console.log('Alert received:', message, type); // Pour le débogage
+    if (message) {
+        showAlert(message, type);
+    }
+};
+
+// Ajout de la vérification des messages flash au chargement
+onMounted(() => {
+    const page = router.page.props;
+
+    if (page.flash?.success) {
+        showAlert(page.flash.success, 'success');
+    }
+    if (page.errors?.error) {
+        showAlert(page.errors.error, 'error');
+    }
+});
+
+const closeDialog = () => {
+    showNewModuleDialog.value = false;
+    newModule.value = { name: '', year_id: '', professor_id: '' };
+};
+
+const showNewProfessorDialog = ref(false);
+const newProfessor = ref({ name: '', email: '' });
+const isCreatingProfessor = ref(false);
+
+const createProfessor = async () => {
+    isCreatingProfessor.value = true;
+    try {
+        const response = await router.post(route('professors.store'), newProfessor.value, {
+            preserveScroll: true,
+            onSuccess: () => {
+                showNewProfessorDialog.value = false;
+                showAlert('Professeur ajouté avec succès', 'success');
+                newProfessor.value = { name: '', email: '' };
+            },
+            onError: () => {
+                showAlert('Erreur lors de la création du professeur', 'error');
+            }
+        });
+    } finally {
+        isCreatingProfessor.value = false;
+    }
+};
 </script>
 
 <template>
     <div class="p-6 space-y-6">
-        <!-- Ajout de l'alerte -->
+        <!-- Modifier l'alerte pour s'assurer qu'elle est bien visible -->
         <div v-if="alertMessage"
              :class="[
-                'fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 transition-all duration-500',
+                'fixed top-4 right-4 p-4 rounded-lg shadow-lg z-[9999] transition-all duration-500',
                 alertMessage.type === 'error' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'
              ]"
         >
@@ -238,5 +317,115 @@ const duplicate = (form) => {
                 </tbody>
             </table>
         </div>
+
+        <!-- Section des modules -->
+        <div class="mt-8">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-semibold">Modules</h2>
+                <Button @click="showNewModuleDialog = true">
+                    <i class="ri-add-line mr-2"></i>
+                    Nouveau module
+                </Button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                <ModuleCard
+                    v-for="module in modules"
+                    :key="module.id"
+                    :module="module"
+                    :professors="professors"
+                    :years="years"
+                    @show-alert="handleAlert"
+                />
+            </div>
+        </div>
+
+        <!-- Dialog pour nouveau module -->
+        <Dialog :open="showNewModuleDialog" @close="closeDialog">
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Nouveau module</DialogTitle>
+                    <DialogDescription>
+                        Créer un nouveau module de cours
+                    </DialogDescription>
+                </DialogHeader>
+                <div class="space-y-4">
+                    <div class="space-y-2">
+                        <Label for="moduleName">Nom du module</Label>
+                        <Input id="moduleName" v-model="newModule.name" placeholder="Nom du module" />
+                    </div>
+                    <div class="space-y-2">
+                        <Label for="moduleYear">Année</Label>
+                        <Select v-model="newModule.year_id">
+                            <SelectTrigger>
+                                <SelectValue placeholder="Sélectionner une année" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem v-for="year in years" :key="year.id" :value="year.id.toString()">
+                                    {{ year.name }}
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <Label for="moduleProfessor">Professeur</Label>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                @click="showNewProfessorDialog = true"
+                                class="text-blue-600 hover:text-blue-700"
+                            >
+                                <i class="ri-add-line mr-1"></i>
+                                Nouveau
+                            </Button>
+                        </div>
+                        <Select v-model="newModule.professor_id">
+                            <SelectTrigger>
+                                <SelectValue placeholder="Sélectionner un professeur" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem v-for="professor in professors" :key="professor.id" :value="professor.id.toString()">
+                                    {{ professor.name }}
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" @click="closeDialog">Annuler</Button>
+                    <Button @click="createModule" :disabled="isCreatingModule">
+                        {{ isCreatingModule ? 'Création...' : 'Créer' }}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
+        <!-- Dialog pour nouveau professeur -->
+        <Dialog :open="showNewProfessorDialog" @close="showNewProfessorDialog = false">
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Nouveau professeur</DialogTitle>
+                    <DialogDescription>
+                        Ajouter un nouveau professeur à la liste
+                    </DialogDescription>
+                </DialogHeader>
+                <div class="space-y-4">
+                    <div class="space-y-2">
+                        <Label for="profName">Nom du professeur</Label>
+                        <Input id="profName" v-model="newProfessor.name" placeholder="Nom complet" />
+                    </div>
+                    <div class="space-y-2">
+                        <Label for="profEmail">Email</Label>
+                        <Input id="profEmail" v-model="newProfessor.email" type="email" placeholder="Email" />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" @click="showNewProfessorDialog = false">Annuler</Button>
+                    <Button @click="createProfessor" :disabled="isCreatingProfessor">
+                        {{ isCreatingProfessor ? 'Création...' : 'Créer' }}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </div>
 </template>
