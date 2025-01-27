@@ -15,7 +15,10 @@ import { Input } from "@/Components/ui/input";
 import { Label } from "@/Components/ui/label";
 
 const props = defineProps({
-    module: Object,
+    module: {
+        type: Object,
+        required: true
+    },
     professors: Array,
     years: Array,
 });
@@ -162,9 +165,13 @@ const createProfessor = async () => {
             <!-- Header non-expansé -->
             <div v-if="!isExpanded" class="h-full flex flex-col">
                 <div class="cursor-pointer group flex-1" @click="isExpanded = true">
-                    <img :src="module.image || defaultImage"
-                         class="w-full h-32 object-cover transition-opacity group-hover:opacity-90"
-                         alt="Module image">
+                    <div class="aspect-w-16 aspect-h-9 mb-4 rounded-lg overflow-hidden">
+                        <img
+                            :src="module.image_path || '/images/default-module.jpg'"
+                            :alt="module.name"
+                            class="object-cover w-full h-full"
+                        />
+                    </div>
                     <div class="p-4 space-y-3">
                         <h3 class="text-base font-semibold group-hover:text-blue-600 line-clamp-1">{{ module.name }}</h3>
                         <div class="space-y-1">

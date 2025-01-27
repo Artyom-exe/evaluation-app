@@ -10,7 +10,7 @@ class Module extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'description', 'professor_id', 'year_id'];
+    protected $fillable = ['name', 'description', 'professor_id', 'year_id', 'image_path'];
 
     // Relation : Un module appartient à un professeur
     public function professor()
