@@ -6,6 +6,7 @@ use App\Models\Module;
 use App\Models\Professor;
 use App\Models\Student;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class ModuleController extends Controller
 {
@@ -68,18 +69,47 @@ class ModuleController extends Controller
 
     public function store(Request $request)
     {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'year_id' => 'required|exists:years,id',
+            'professor_id' => 'required|exists:professors,id',
+            'image' => 'nullable|image|max:2048', // Max 2MB
+            'students' => 'required|json'
+        ]);
+
         try {
-            $validated = $request->validate([
-                'name' => 'required|string|max:255',
-                'professor_id' => 'required|exists:professors,id',
-                'year_id' => 'required|exists:years,id'
-            ]);
+            \DB::beginTransaction();
+
+            if ($request->hasFile('image')) {
+                // S'assurer que le répertoire existe
+                Storage::disk('public')->makeDirectory('modules');
+
+                $path = $request->file('image')->store('modules', 'public');
+                $validated['image_path'] = Storage::url($path);
+            } else {
+                // Utiliser l'image par défaut
+                $validated['image_path'] = '/storage/modules/default/default-module.jpg';
+            }
 
             $module = Module::create($validated);
 
+            // Traitement des étudiants
+            $students = json_decode($request->students, true);
+            foreach ($students as $studentData) {
+                if (isset($studentData['email']) && filter_var($studentData['email'], FILTER_VALIDATE_EMAIL)) {
+                    $student = Student::firstOrCreate(
+                        ['email' => $studentData['email']],
+                        ['name' => $studentData['name'] ?? null]
+                    );
+                    $module->students()->attach($student->id);
+                }
+            }
+
+            \DB::commit();
             return redirect()->back()->with('success', 'Module créé avec succès');
         } catch (\Exception $e) {
-            return back()->withErrors(['error' => $e->getMessage()]);
+            \DB::rollBack();
+            return back()->withErrors(['error' => "Une erreur est survenue lors de la création du module: " . $e->getMessage()]);
         }
     }
 
