@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Module extends Model
 {
@@ -24,9 +25,9 @@ class Module extends Model
     }
 
     // Relation : Un module peut avoir plusieurs formulaires
-    public function forms()
+    public function forms(): HasMany
     {
-        return $this->belongsToMany(Form::class, 'modules_forms');
+        return $this->hasMany(Form::class);
     }
 
     // Relation : Un module peut avoir plusieurs étudiants via inscriptions
