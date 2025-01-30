@@ -14,6 +14,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from "@/Components/ui/input";
 import { Label } from "@/Components/ui/label";
 
+// Ajouter les constantes pour les IDs des descriptions
+const NEW_PROFESSOR_DIALOG_DESC = 'module-new-professor-description';
+
 const props = defineProps({
     module: {
         type: Object,
@@ -380,10 +383,10 @@ const statusIndicator = computed(() => {
 
     <!-- Dialog pour nouveau professeur -->
     <Dialog :open="showNewProfessorDialog" @close="showNewProfessorDialog = false">
-        <DialogContent>
+        <DialogContent :aria-describedby="NEW_PROFESSOR_DIALOG_DESC">
             <DialogHeader>
                 <DialogTitle>Nouveau professeur</DialogTitle>
-                <DialogDescription>
+                <DialogDescription :id="NEW_PROFESSOR_DIALOG_DESC">
                     Ajouter un nouveau professeur à la liste
                 </DialogDescription>
             </DialogHeader>
