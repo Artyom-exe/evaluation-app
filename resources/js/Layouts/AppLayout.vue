@@ -18,10 +18,14 @@ import {
 } from "@/Components/ui/sheet";
 import ModuleCard from '@/Components/ModuleCard.vue';
 import { Button } from '@/Components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/Components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/Components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/Components/ui/select";
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
+
+// Constantes pour les IDs de description (déplacées en haut)
+const NEW_MODULE_DESCRIPTION_ID = 'new-module-description';
+const NEW_PROFESSOR_DESCRIPTION_ID = 'new-professor-description';
 
 defineProps({
     title: String,
@@ -123,13 +127,13 @@ const removeStudent = (index) => {
 // Modifier createModule pour inclure les étudiants
 const createModule = async () => {
     isCreatingModule.value = true;
-    
+
     const formData = new FormData();
     formData.append('name', newModule.value.name);
     formData.append('year_id', newModule.value.year_id);
     formData.append('professor_id', newModule.value.professor_id);
     formData.append('students', JSON.stringify(newModule.value.students));
-    
+
     if (newModule.value.image) {
         formData.append('image', newModule.value.image);
     }
@@ -416,7 +420,7 @@ const showNewModuleDialog = ref(false);
                                         <form @submit.prevent="switchToTeam(team)">
                                             <ResponsiveNavLink as="button">
                                                 <div class="flex items-center">
-                                                    <svg v-if="team.id == $page.props.auth.user.current_team_id" class="me-2 size-5 text-green-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 24 24" stroke-width="1.5" stroke="currentColor">
+                                                    <svg v-if="team.id == $page.props.auth.user.current_team_id" class="me-2 size-5 text-green-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                     </svg>
                                                     <div>{{ team.name }}</div>
@@ -501,7 +505,6 @@ const showNewModuleDialog = ref(false);
                                         :professors="$page.props.professors"
                                         :years="$page.props.years"
                                         @show-alert="showAlert"
-                                        class="w-full"
                                     />
                                 </div>
                             </div>
@@ -511,11 +514,14 @@ const showNewModuleDialog = ref(false);
             </SheetPortal>
         </Sheet>
 
-        <!-- Dialog pour nouveau module modifié -->
+        <!-- Dialog pour nouveau module -->
         <Dialog :open="showNewModuleDialog" @update:open="showNewModuleDialog = false">
-            <DialogContent class="sm:max-w-[600px]">
+            <DialogContent class="sm:max-w-[600px]" :aria-describedby="NEW_MODULE_DESCRIPTION_ID">
                 <DialogHeader>
                     <DialogTitle>Nouveau module</DialogTitle>
+                    <DialogDescription :id="NEW_MODULE_DESCRIPTION_ID">
+                        Remplissez les informations pour créer un nouveau module.
+                    </DialogDescription>
                 </DialogHeader>
                 <div class="space-y-6 py-4">
                     <!-- Informations de base du module -->
@@ -609,7 +615,7 @@ const showNewModuleDialog = ref(false);
                     <div class="space-y-4">
                         <Label>Image du module</Label>
                         <div class="flex items-center gap-4">
-                            <div 
+                            <div
                                 class="relative w-32 h-32 border-2 border-dashed rounded-lg overflow-hidden hover:bg-gray-50 transition-colors"
                                 :class="{'border-primary': imagePreview}"
                             >
@@ -622,9 +628,9 @@ const showNewModuleDialog = ref(false);
                                 <div v-if="!imagePreview" class="absolute inset-0 flex items-center justify-center">
                                     <i class="ri-image-add-line text-2xl text-gray-400"></i>
                                 </div>
-                                <img 
-                                    v-if="imagePreview" 
-                                    :src="imagePreview" 
+                                <img
+                                    v-if="imagePreview"
+                                    :src="imagePreview"
                                     class="absolute inset-0 w-full h-full object-cover"
                                 />
                             </div>
@@ -651,9 +657,12 @@ const showNewModuleDialog = ref(false);
 
         <!-- Dialog pour nouveau professeur -->
         <Dialog :open="showNewProfessorDialog" @update:open="showNewProfessorDialog = false">
-            <DialogContent class="sm:max-w-[425px]">
+            <DialogContent class="sm:max-w-[425px]" :aria-describedby="NEW_PROFESSOR_DESCRIPTION_ID">
                 <DialogHeader>
                     <DialogTitle>Nouveau professeur</DialogTitle>
+                    <DialogDescription :id="NEW_PROFESSOR_DESCRIPTION_ID">
+                        Remplissez les informations pour ajouter un nouveau professeur.
+                    </DialogDescription>
                 </DialogHeader>
                 <div class="space-y-4 py-4">
                     <div class="space-y-2">
