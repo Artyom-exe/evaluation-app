@@ -10,31 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/Components/ui/input";
 import { Label } from "@/Components/ui/label";
 
-// Constants
+// Centralisation des IDs pour les dialogues
 const DIALOG_IDS = {
     MODULE: 'module-edit-description',
     NEW_PROFESSOR: 'module-new-professor-description',
     EDIT_PROFESSOR: 'module-edit-professor-description'
 };
-
-// States
-const uiState = ref({
-    dialogs: {
-        main: false,
-        newProfessor: false,
-        editProfessor: false
-    },
-    loading: {
-        main: false,
-        professor: false
-    },
-    hover: false
-});
-
-// Ajouter les constantes pour les IDs des descriptions
-const MODULE_DIALOG_DESC = 'module-edit-description';
-const NEW_PROFESSOR_DIALOG_DESC = 'module-new-professor-description';
-const EDIT_PROFESSOR_DIALOG_DESC = 'module-edit-professor-description';
 
 const props = defineProps({
     module: {
@@ -47,6 +28,7 @@ const props = defineProps({
 
 const emit = defineEmits(['showAlert']);
 const isLoading = ref(false);
+const showDialog = ref(false);
 
 // État initial des données
 const formData = ref({
@@ -183,8 +165,6 @@ const statusIndicator = computed(() => {
     return { color: 'bg-green-400', text: 'Actif' };
 });
 
-const showDialog = ref(false);
-
 // Ajouter les refs pour la gestion de l'image
 const imagePreview = ref(props.module.image_path || null);
 
@@ -219,28 +199,20 @@ const addStudentsFromEmails = () => {
     }
 };
 
-// Corriger la fonction removeStudent
+// Simplification de removeStudent
 const removeStudent = async (emailToRemove) => {
-    if (!confirm('Voulez-vous vraiment retirer cet étudiant du module ?')) {
-        return;
-    }
-
+    if (!confirm('Voulez-vous vraiment retirer cet étudiant du module ?')) return;
     try {
         await router.delete(route('modules.removeStudent', props.module.id), {
             data: { email: emailToRemove },
             preserveScroll: true,
-            onSuccess: () => {
-                // Mettre à jour l'interface immédiatement après succès
-                const emails = formData.value.studentEmails.split(/[,\s]+/).filter(e => e);
-                formData.value.studentEmails = emails.filter(email => email !== emailToRemove).join(', ');
-                emit('showAlert', 'Étudiant retiré avec succès', 'success');
-            },
-            onError: (error) => {
-                emit('showAlert', error?.error || 'Erreur lors de la suppression de l\'étudiant', 'error');
-            }
         });
+        // Mise à jour immédiate des emails
+        const emails = formData.value.studentEmails.split(/[,\s]+/).filter(e => e);
+        formData.value.studentEmails = emails.filter(email => email !== emailToRemove).join(', ');
+        emit('showAlert', 'Étudiant retiré avec succès', 'success');
     } catch (error) {
-        emit('showAlert', 'Une erreur est survenue', 'error');
+        emit('showAlert', error?.error || 'Erreur lors de la suppression de l’étudiant', 'error');
     }
 };
 
@@ -390,14 +362,14 @@ const deleteProfessor = async (professor, event) => {
     <Dialog :open="showDialog" @update:open="showDialog = $event">
         <DialogContent
             class="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] w-[90vw] sm:max-w-[600px] max-h-[85vh] !p-0 flex flex-col bg-white rounded-lg overflow-hidden"
-            :aria-describedby="MODULE_DIALOG_DESC"
+            :aria-describedby="DIALOG_IDS.MODULE"
         >
             <!-- En-tête fixe -->
             <div class="flex-none bg-white border-b">
                 <div class="p-6">
                     <DialogHeader>
                         <DialogTitle class="text-xl font-semibold">Modifier le module</DialogTitle>
-                        <DialogDescription :id="MODULE_DIALOG_DESC" class="text-sm text-gray-500">
+                        <DialogDescription :id="DIALOG_IDS.MODULE" class="text-sm text-gray-500">
                             Modifier les informations du module {{ module.name }}
                         </DialogDescription>
                     </DialogHeader>
@@ -433,7 +405,7 @@ const deleteProfessor = async (professor, event) => {
                                     variant="ghost"
                                     size="sm"
                                     @click="showNewProfessorDialog = true"
-                                    class="hover:text-black"
+                                    class="text-blue-600 hover:text-blue-700"
                                 >
                                     <i class="ri-add-line mr-1"></i>
                                     Nouveau
@@ -582,10 +554,10 @@ const deleteProfessor = async (professor, event) => {
 
     <!-- Dialog pour nouveau professeur -->
     <Dialog :open="showNewProfessorDialog" @update:open="showNewProfessorDialog = $event">
-        <DialogContent :aria-describedby="NEW_PROFESSOR_DIALOG_DESC">
+        <DialogContent :aria-describedby="DIALOG_IDS.NEW_PROFESSOR">
             <DialogHeader>
                 <DialogTitle>Nouveau professeur</DialogTitle>
-                <DialogDescription :id="NEW_PROFESSOR_DIALOG_DESC">
+                <DialogDescription :id="DIALOG_IDS.NEW_PROFESSOR">
                     Ajouter un nouveau professeur à la liste
                 </DialogDescription>
             </DialogHeader>
@@ -612,11 +584,11 @@ const deleteProfessor = async (professor, event) => {
     <Dialog :open="showEditProfessorDialog" @update:open="showEditProfessorDialog = $event">
         <DialogContent
             class="sm:max-w-[425px] !z-[100]"
-            :aria-describedby="EDIT_PROFESSOR_DIALOG_DESC"
+            :aria-describedby="DIALOG_IDS.EDIT_PROFESSOR"
         >
             <DialogHeader>
                 <DialogTitle>Modifier le professeur</DialogTitle>
-                <DialogDescription :id="EDIT_PROFESSOR_DIALOG_DESC">
+                <DialogDescription :id="DIALOG_IDS.EDIT_PROFESSOR">
                     Modifiez les informations du professeur.
                 </DialogDescription>
             </DialogHeader>

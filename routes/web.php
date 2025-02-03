@@ -8,7 +8,6 @@ use App\Http\Controllers\QuestionTypeController;
 use App\Http\Controllers\ModuleController;
 use App\Http\Controllers\ProfessorController;
 
-
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),

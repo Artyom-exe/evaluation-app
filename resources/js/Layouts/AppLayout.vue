@@ -23,11 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
 
-// Constantes pour les IDs de description (déplacées en haut)
-const NEW_MODULE_DESCRIPTION_ID = 'new-module-description';
-const NEW_PROFESSOR_DESCRIPTION_ID = 'new-professor-description';
-
-// Ajouter les constantes pour les IDs des descriptions
+// Consolidation des IDs de description dans un objet
 const DIALOG_DESC = {
     MODULE_EDIT: 'module-edit-description',
     NEW_MODULE: 'new-module-description',
@@ -586,7 +582,7 @@ const updateProfessor = async () => {
                     <div class="p-6">
                         <DialogHeader>
                             <DialogTitle class="text-xl font-semibold">Nouveau module</DialogTitle>
-                            <DialogDescription :id="NEW_MODULE_DESCRIPTION_ID" class="text-sm text-gray-500">
+                            <DialogDescription :id="DIALOG_DESC.NEW_MODULE" class="text-sm text-gray-500">
                                 Remplissez les informations pour créer un nouveau module.
                             </DialogDescription>
                         </DialogHeader>
@@ -775,7 +771,7 @@ const updateProfessor = async () => {
             >
                 <DialogHeader>
                     <DialogTitle>Nouveau professeur</DialogTitle>
-                    <DialogDescription :id="NEW_PROFESSOR_DESCRIPTION_ID">
+                    <DialogDescription :id="DIALOG_DESC.NEW_PROFESSOR">
                         Remplissez les informations pour ajouter un nouveau professeur.
                     </DialogDescription>
                 </DialogHeader>
