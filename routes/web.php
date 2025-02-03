@@ -38,6 +38,7 @@ Route::middleware([
         Route::delete('{module}', [ModuleController::class, 'destroy'])->name('destroy');
         // Corriger la route de suppression d'étudiant (enlever 'modules' en double)
         Route::delete('{module}/students', [ModuleController::class, 'removeStudent'])->name('removeStudent');
+        Route::put('{module}/update', [ModuleController::class, 'update'])->name('update'); // Changer post en put
     });
 
     // Ajouter cette nouvelle route
