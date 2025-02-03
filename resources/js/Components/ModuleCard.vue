@@ -370,7 +370,7 @@ const deleteProfessor = async (professor, event) => {
     </div>
 
     <!-- Dialog pour l'édition du module -->
-    <Dialog :open="showDialog" @close="showDialog = false">
+    <Dialog :open="showDialog" @update:open="showDialog = $event">
         <DialogContent
             class="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] w-[90vw] sm:max-w-[600px] max-h-[85vh] !p-0 flex flex-col bg-white rounded-lg overflow-hidden"
             :aria-describedby="MODULE_DIALOG_DESC"
@@ -564,7 +564,7 @@ const deleteProfessor = async (professor, event) => {
     </Dialog>
 
     <!-- Dialog pour nouveau professeur -->
-    <Dialog :open="showNewProfessorDialog" @close="showNewProfessorDialog = false">
+    <Dialog :open="showNewProfessorDialog" @update:open="showNewProfessorDialog = $event">
         <DialogContent :aria-describedby="NEW_PROFESSOR_DIALOG_DESC">
             <DialogHeader>
                 <DialogTitle>Nouveau professeur</DialogTitle>
@@ -592,7 +592,7 @@ const deleteProfessor = async (professor, event) => {
     </Dialog>
 
     <!-- Dialog pour modifier professeur -->
-    <Dialog :open="showEditProfessorDialog" @close="showEditProfessorDialog = false">
+    <Dialog :open="showEditProfessorDialog" @update:open="showEditProfessorDialog = $event">
         <DialogContent
             class="sm:max-w-[425px] !z-[100]"
             :aria-describedby="EDIT_PROFESSOR_DIALOG_DESC"
