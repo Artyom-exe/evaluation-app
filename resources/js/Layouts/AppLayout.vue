@@ -100,6 +100,30 @@ const createProfessor = async () => {
     }
 };
 
+// Ajouter la fonction de suppression de professeur
+const deleteProfessor = async (professorId, event) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce professeur ?')) {
+        return;
+    }
+
+    try {
+        await router.delete(route('professors.destroy', professorId), {
+            preserveScroll: true,
+            onSuccess: (page) => {
+                showAlert('Professeur supprimé avec succès');
+            },
+            onError: (errors) => {
+                showAlert(errors.error, 'error');
+            }
+        });
+    } catch (error) {
+        showAlert('Une erreur est survenue', 'error');
+    }
+};
+
 // Gestionnaire d'alerte
 const showAlert = (message, type = 'success') => {
     alertMessage.value = { message, type };
@@ -578,13 +602,24 @@ const showNewModuleDialog = ref(false);
                                     <SelectValue placeholder="Sélectionner un professeur" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem
-                                        v-for="professor in $page.props.professors"
-                                        :key="professor.id"
-                                        :value="String(professor.id)"
-                                    >
-                                        {{ professor.name }}
-                                    </SelectItem>
+                                    <div class="max-h-[200px] overflow-y-auto">
+                                        <div v-for="professor in $page.props.professors"
+                                             :key="professor.id"
+                                             class="flex items-center justify-between p-2 hover:bg-gray-100"
+                                        >
+                                            <SelectItem :value="String(professor.id)">
+                                                {{ professor.name }}
+                                            </SelectItem>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                @click.stop="(e) => deleteProfessor(professor.id, e)"
+                                                class="text-red-500 hover:text-red-700"
+                                            >
+                                                <i class="ri-delete-bin-line"></i>
+                                            </Button>
+                                        </div>
+                                    </div>
                                 </SelectContent>
                             </Select>
                         </div>
