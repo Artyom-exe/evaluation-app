@@ -516,150 +516,167 @@ const showNewModuleDialog = ref(false);
 
         <!-- Dialog pour nouveau module -->
         <Dialog :open="showNewModuleDialog" @update:open="showNewModuleDialog = false">
-            <DialogContent class="sm:max-w-[600px]" :aria-describedby="NEW_MODULE_DESCRIPTION_ID">
-                <DialogHeader>
-                    <DialogTitle>Nouveau module</DialogTitle>
-                    <DialogDescription :id="NEW_MODULE_DESCRIPTION_ID">
-                        Remplissez les informations pour créer un nouveau module.
-                    </DialogDescription>
-                </DialogHeader>
-                <div class="space-y-6 py-4">
-                    <!-- Informations de base du module -->
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="space-y-2">
-                            <Label>Nom du module</Label>
-                            <Input v-model="newModule.name" placeholder="Nom du module" />
+            <DialogContent
+                class="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] w-[90vw] sm:max-w-[600px] max-h-[85vh] !p-0 flex flex-col bg-white rounded-lg overflow-hidden"
+            >
+                <!-- En-tête fixe -->
+                <div class="flex-none bg-white border-b">
+                    <div class="p-6">
+                        <DialogHeader>
+                            <DialogTitle class="text-xl font-semibold">Nouveau module</DialogTitle>
+                            <DialogDescription :id="NEW_MODULE_DESCRIPTION_ID" class="text-sm text-gray-500">
+                                Remplissez les informations pour créer un nouveau module.
+                            </DialogDescription>
+                        </DialogHeader>
+                    </div>
+                </div>
+
+                <!-- Corps scrollable avec padding fixe -->
+                <div class="flex-1 overflow-y-auto">
+                    <div class="p-6 space-y-6">
+                        <!-- Informations de base du module -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="space-y-2">
+                                <Label>Nom du module</Label>
+                                <Input v-model="newModule.name" placeholder="Nom du module" />
+                            </div>
+                            <div class="space-y-2">
+                                <Label>Année</Label>
+                                <Select v-model="newModule.year_id">
+                                    <SelectTrigger class="w-full">
+                                        <SelectValue placeholder="Sélectionner une année" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem
+                                            v-for="year in $page.props.years"
+                                            :key="year.id"
+                                            :value="String(year.id)"
+                                        >
+                                            {{ year.name }}
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
+
+                        <!-- Section Professeur -->
                         <div class="space-y-2">
-                            <Label>Année</Label>
-                            <Select v-model="newModule.year_id">
+                            <div class="flex justify-between items-center">
+                                <Label>Professeur</Label>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    @click="showNewProfessorDialog = true"
+                                    class="text-blue-600 hover:text-blue-700"
+                                >
+                                    <i class="ri-add-line mr-1"></i>
+                                    Nouveau
+                                </Button>
+                            </div>
+                            <Select v-model="newModule.professor_id">
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Sélectionner une année" />
+                                    <SelectValue placeholder="Sélectionner un professeur" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem
-                                        v-for="year in $page.props.years"
-                                        :key="year.id"
-                                        :value="String(year.id)"
+                                        v-for="professor in $page.props.professors"
+                                        :key="professor.id"
+                                        :value="String(professor.id)"
                                     >
-                                        {{ year.name }}
+                                        {{ professor.name }}
                                     </SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
-                    </div>
 
-                    <div class="space-y-2">
-                        <div class="flex justify-between items-center">
-                            <Label>Professeur</Label>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                @click="showNewProfessorDialog = true"
-                                class="text-blue-600 hover:text-blue-700"
-                            >
-                                <i class="ri-add-line mr-1"></i>
-                                Nouveau
-                            </Button>
-                        </div>
-                        <Select v-model="newModule.professor_id">
-                            <SelectTrigger>
-                                <SelectValue placeholder="Sélectionner un professeur" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem
-                                    v-for="professor in $page.props.professors"
-                                    :key="professor.id"
-                                    :value="String(professor.id)"
-                                >
-                                    {{ professor.name }}
-                                </SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
+                        <!-- Section des étudiants -->
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center">
+                                <Label>Étudiants</Label>
+                                <span class="text-sm text-gray-500">{{ newModule.students.length }} étudiant(s)</span>
+                            </div>
 
-                    <!-- Section des étudiants -->
-                    <div class="space-y-4">
-                        <div class="flex justify-between items-center">
-                            <Label>Étudiants</Label>
-                            <span class="text-sm text-gray-500">{{ newModule.students.length }} étudiant(s)</span>
-                        </div>
-
-                        <!-- Textarea pour les emails -->
-                        <div class="space-y-2">
-                            <Label>Ajouter des emails (un par ligne ou séparés par des virgules)</Label>
-                            <textarea
-                                v-model="studentsEmails"
-                                rows="4"
-                                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                                placeholder="email1@example.com&#10;email2@example.com"
-                            ></textarea>
-                            <Button @click="addStudentsFromEmails" variant="outline" class="w-full">
-                                <i class="ri-user-add-line mr-2"></i>
-                                Ajouter les étudiants
-                            </Button>
-                        </div>
-
-                        <!-- Liste des étudiants -->
-                        <div class="max-h-[200px] overflow-y-auto border rounded-lg divide-y">
-                            <div v-for="(student, index) in newModule.students"
-                                 :key="index"
-                                 class="flex justify-between items-center p-2 hover:bg-gray-50"
-                            >
-                                <div class="text-sm">{{ student.email }}</div>
-                                <Button variant="ghost" size="sm" @click="removeStudent(index)">
-                                    <i class="ri-delete-bin-line text-red-500" />
+                            <!-- Textarea pour les emails -->
+                            <div class="space-y-2">
+                                <Label>Ajouter des emails (un par ligne ou séparés par des virgules)</Label>
+                                <textarea
+                                    v-model="studentsEmails"
+                                    rows="4"
+                                    class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                                    placeholder="email1@example.com&#10;email2@example.com"
+                                ></textarea>
+                                <Button @click="addStudentsFromEmails" variant="outline" class="w-full">
+                                    <i class="ri-user-add-line mr-2"></i>
+                                    Ajouter les étudiants
                                 </Button>
                             </div>
-                            <div v-if="newModule.students.length === 0"
-                                 class="p-4 text-center text-gray-500"
-                            >
-                                Aucun étudiant ajouté
+
+                            <!-- Liste des étudiants -->
+                            <div class="max-h-[200px] overflow-y-auto border rounded-lg divide-y">
+                                <div v-for="(student, index) in newModule.students"
+                                     :key="index"
+                                     class="flex justify-between items-center p-2 hover:bg-gray-50"
+                                >
+                                    <div class="text-sm">{{ student.email }}</div>
+                                    <Button variant="ghost" size="sm" @click="removeStudent(index)">
+                                        <i class="ri-delete-bin-line text-red-500" />
+                                    </Button>
+                                </div>
+                                <div v-if="newModule.students.length === 0"
+                                     class="p-4 text-center text-gray-500"
+                                >
+                                    Aucun étudiant ajouté
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Section upload image -->
-                    <div class="space-y-4">
-                        <Label>Image du module</Label>
-                        <div class="flex items-center gap-4">
-                            <div
-                                class="relative w-32 h-32 border-2 border-dashed rounded-lg overflow-hidden hover:bg-gray-50 transition-colors"
-                                :class="{'border-primary': imagePreview}"
-                            >
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                    @change="handleImageUpload"
-                                />
-                                <div v-if="!imagePreview" class="absolute inset-0 flex items-center justify-center">
-                                    <i class="ri-image-add-line text-2xl text-gray-400"></i>
+                        <!-- Section upload image -->
+                        <div class="space-y-4">
+                            <Label>Image du module</Label>
+                            <div class="flex items-center gap-4">
+                                <div
+                                    class="relative w-32 h-32 border-2 border-dashed rounded-lg overflow-hidden hover:bg-gray-50 transition-colors"
+                                    :class="{'border-primary': imagePreview}"
+                                >
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                        @change="handleImageUpload"
+                                    />
+                                    <div v-if="!imagePreview" class="absolute inset-0 flex items-center justify-center">
+                                        <i class="ri-image-add-line text-2xl text-gray-400"></i>
+                                    </div>
+                                    <img
+                                        v-if="imagePreview"
+                                        :src="imagePreview"
+                                        class="absolute inset-0 w-full h-full object-cover"
+                                    />
                                 </div>
-                                <img
-                                    v-if="imagePreview"
-                                    :src="imagePreview"
-                                    class="absolute inset-0 w-full h-full object-cover"
-                                />
-                            </div>
-                            <div class="flex-1">
-                                <p class="text-sm text-gray-500">
-                                    Cliquez ou glissez une image ici pour l'ajouter au module.
-                                    <br>
-                                    Formats acceptés : JPG, PNG. Max 2MB.
-                                </p>
+                                <div class="flex-1">
+                                    <p class="text-sm text-gray-500">
+                                        Cliquez ou glissez une image ici pour l'ajouter au module.
+                                        <br>
+                                        Formats acceptés : JPG, PNG. Max 2MB.
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <DialogFooter>
-                    <Button variant="outline" @click="showNewModuleDialog = false">
-                        Annuler
-                    </Button>
-                    <Button @click="createModule" :disabled="isCreatingModule">
-                        {{ isCreatingModule ? 'Création...' : 'Créer' }}
-                    </Button>
-                </DialogFooter>
+
+                <!-- Footer fixe -->
+                <div class="flex-none bg-white border-t">
+                    <div class="p-6 flex justify-end gap-3">
+                        <Button variant="outline" @click="showNewModuleDialog = false">
+                            Annuler
+                        </Button>
+                        <Button @click="createModule" :disabled="isCreatingModule"
+                            class="bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50">
+                            {{ isCreatingModule ? 'Création...' : 'Créer' }}
+                        </Button>
+                    </div>
+                </div>
             </DialogContent>
         </Dialog>
 
@@ -700,8 +717,12 @@ const showNewModuleDialog = ref(false);
     transition-property: transform;
 }
 
-/* Ajout de styles pour les cartes de module */
 .grid-cols-2 > * {
     min-width: 0;
+}
+
+/* Ajout des styles pour le dialog */
+:root {
+    --dialog-padding: 1.5rem;
 }
 </style>
