@@ -8,13 +8,9 @@ use App\Http\Controllers\QuestionTypeController;
 use App\Http\Controllers\ModuleController;
 use App\Http\Controllers\ProfessorController;
 
+// Remplacer la route racine et la route dashboard
 Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
+    return redirect()->route('forms.index');
 });
 
 Route::middleware([
@@ -23,7 +19,7 @@ Route::middleware([
     'verified',
 ])->group(function () {
     Route::get('/dashboard', function () {
-        return Inertia::render('Dashboard');
+        return redirect()->route('forms.index');
     })->name('dashboard');
 
     Route::resource('forms', FormController::class);
@@ -36,6 +32,7 @@ Route::middleware([
         Route::put('{module}/students', [ModuleController::class, 'updateStudents'])->name('updateStudents');
         Route::delete('{module}', [ModuleController::class, 'destroy'])->name('destroy');
         Route::delete('{module}/students', [ModuleController::class, 'removeStudent'])->name('removeStudent');
+        Route::get('/', [ModuleController::class, 'index'])->name('index');
     });
 
     // Professor routes
