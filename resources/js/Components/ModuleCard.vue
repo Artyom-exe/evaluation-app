@@ -1,18 +1,35 @@
 <script setup>
+// Core imports
 import { ref, computed, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
+
+// UI Components - Remove unused imports
 import { Button } from '@/Components/ui/button';
-import { Textarea } from "@/Components/ui/textarea";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/Components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/Components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/Components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/Components/ui/select";
 import { Input } from "@/Components/ui/input";
 import { Label } from "@/Components/ui/label";
+
+// Constants
+const DIALOG_IDS = {
+    MODULE: 'module-edit-description',
+    NEW_PROFESSOR: 'module-new-professor-description',
+    EDIT_PROFESSOR: 'module-edit-professor-description'
+};
+
+// States
+const uiState = ref({
+    dialogs: {
+        main: false,
+        newProfessor: false,
+        editProfessor: false
+    },
+    loading: {
+        main: false,
+        professor: false
+    },
+    hover: false
+});
 
 // Ajouter les constantes pour les IDs des descriptions
 const MODULE_DIALOG_DESC = 'module-edit-description';

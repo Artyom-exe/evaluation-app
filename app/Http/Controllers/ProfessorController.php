@@ -8,6 +8,13 @@ use Illuminate\Validation\Rule;
 
 class ProfessorController extends Controller
 {
+    private function getSuccessMessage(Professor $professor, bool $hasHomonyms): string
+    {
+        return $hasHomonyms
+            ? "Le professeur {$professor->name} ({$professor->email}) a été supprimé avec succès"
+            : "Le professeur {$professor->name} a été supprimé avec succès";
+    }
+
     public function store(Request $request)
     {
         try {
@@ -42,9 +49,7 @@ class ProfessorController extends Controller
             }
 
             // Si c'est un homonyme, inclure l'email dans le message de succès
-            $successMessage = $homonyms
-                ? "Le professeur {$professor->name} ({$professor->email}) a été supprimé avec succès"
-                : "Le professeur {$professor->name} a été supprimé avec succès";
+            $successMessage = $this->getSuccessMessage($professor, $homonyms);
 
             $professor->delete();
             return back()->with('success', $successMessage);
