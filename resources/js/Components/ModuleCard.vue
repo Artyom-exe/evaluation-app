@@ -295,7 +295,7 @@ const statusIndicator = computed(() => {
                                         <SelectItem
                                             v-for="professor in professors"
                                             :key="professor.id"
-                                            :value="professor.id.toString()"
+                                            :value="String(professor.id)"
                                         >
                                             {{ professor.name }}
                                         </SelectItem>
@@ -312,7 +312,7 @@ const statusIndicator = computed(() => {
                                         <SelectItem
                                             v-for="year in years"
                                             :key="year.id"
-                                            :value="year.id.toString()"
+                                            :value="String(year.id)"
                                         >
                                             {{ year.name }}
                                         </SelectItem>

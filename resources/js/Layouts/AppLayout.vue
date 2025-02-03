@@ -537,7 +537,11 @@ const showNewModuleDialog = ref(false);
                                     <SelectValue placeholder="Sélectionner une année" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem v-for="year in $page.props.years" :key="year.id" :value="year.id">
+                                    <SelectItem
+                                        v-for="year in $page.props.years"
+                                        :key="year.id"
+                                        :value="String(year.id)"
+                                    >
                                         {{ year.name }}
                                     </SelectItem>
                                 </SelectContent>
@@ -563,7 +567,11 @@ const showNewModuleDialog = ref(false);
                                 <SelectValue placeholder="Sélectionner un professeur" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem v-for="professor in $page.props.professors" :key="professor.id" :value="professor.id">
+                                <SelectItem
+                                    v-for="professor in $page.props.professors"
+                                    :key="professor.id"
+                                    :value="String(professor.id)"
+                                >
                                     {{ professor.name }}
                                 </SelectItem>
                             </SelectContent>
