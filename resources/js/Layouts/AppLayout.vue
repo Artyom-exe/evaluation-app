@@ -27,6 +27,14 @@ import { Label } from '@/Components/ui/label';
 const NEW_MODULE_DESCRIPTION_ID = 'new-module-description';
 const NEW_PROFESSOR_DESCRIPTION_ID = 'new-professor-description';
 
+// Ajouter les constantes pour les IDs des descriptions
+const DIALOG_DESC = {
+    MODULE_EDIT: 'module-edit-description',
+    NEW_MODULE: 'new-module-description',
+    NEW_PROFESSOR: 'new-professor-description',
+    EDIT_PROFESSOR: 'edit-professor-description',
+};
+
 defineProps({
     title: String,
     modules: Array, // Ajout de la prop modules
@@ -571,6 +579,7 @@ const updateProfessor = async () => {
         <Dialog :open="showNewModuleDialog" @update:open="showNewModuleDialog = false">
             <DialogContent
                 class="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] w-[90vw] sm:max-w-[600px] max-h-[85vh] !p-0 flex flex-col bg-white rounded-lg overflow-hidden"
+                :aria-describedby="DIALOG_DESC.NEW_MODULE"
             >
                 <!-- En-tête fixe -->
                 <div class="flex-none bg-white border-b">
@@ -760,7 +769,10 @@ const updateProfessor = async () => {
 
         <!-- Dialog pour nouveau professeur -->
         <Dialog :open="showNewProfessorDialog" @update:open="showNewProfessorDialog = false">
-            <DialogContent class="sm:max-w-[425px]" :aria-describedby="NEW_PROFESSOR_DESCRIPTION_ID">
+            <DialogContent
+                class="sm:max-w-[425px]"
+                :aria-describedby="DIALOG_DESC.NEW_PROFESSOR"
+            >
                 <DialogHeader>
                     <DialogTitle>Nouveau professeur</DialogTitle>
                     <DialogDescription :id="NEW_PROFESSOR_DESCRIPTION_ID">
@@ -790,10 +802,13 @@ const updateProfessor = async () => {
 
         <!-- Dialog pour modifier professeur -->
         <Dialog :open="showEditProfessorDialog" @update:open="showEditProfessorDialog = false">
-            <DialogContent class="sm:max-w-[425px] z-[100]">
+            <DialogContent
+                class="sm:max-w-[425px] z-[100]"
+                :aria-describedby="DIALOG_DESC.EDIT_PROFESSOR"
+            >
                 <DialogHeader>
                     <DialogTitle>Modifier le professeur</DialogTitle>
-                    <DialogDescription>
+                    <DialogDescription :id="DIALOG_DESC.EDIT_PROFESSOR">
                         Modifiez les informations du professeur.
                     </DialogDescription>
                 </DialogHeader>

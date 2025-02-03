@@ -15,7 +15,9 @@ import { Input } from "@/Components/ui/input";
 import { Label } from "@/Components/ui/label";
 
 // Ajouter les constantes pour les IDs des descriptions
+const MODULE_DIALOG_DESC = 'module-edit-description';
 const NEW_PROFESSOR_DIALOG_DESC = 'module-new-professor-description';
+const EDIT_PROFESSOR_DIALOG_DESC = 'module-edit-professor-description';
 
 const props = defineProps({
     module: {
@@ -371,13 +373,14 @@ const deleteProfessor = async (professor, event) => {
     <Dialog :open="showDialog" @close="showDialog = false">
         <DialogContent
             class="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] w-[90vw] sm:max-w-[600px] max-h-[85vh] !p-0 flex flex-col bg-white rounded-lg overflow-hidden"
+            :aria-describedby="MODULE_DIALOG_DESC"
         >
             <!-- En-tête fixe -->
             <div class="flex-none bg-white border-b">
                 <div class="p-6">
                     <DialogHeader>
                         <DialogTitle class="text-xl font-semibold">Modifier le module</DialogTitle>
-                        <DialogDescription class="text-sm text-gray-500">
+                        <DialogDescription :id="MODULE_DIALOG_DESC" class="text-sm text-gray-500">
                             Modifier les informations du module {{ module.name }}
                         </DialogDescription>
                     </DialogHeader>
@@ -590,10 +593,13 @@ const deleteProfessor = async (professor, event) => {
 
     <!-- Dialog pour modifier professeur -->
     <Dialog :open="showEditProfessorDialog" @close="showEditProfessorDialog = false">
-        <DialogContent class="sm:max-w-[425px] !z-[100]">
+        <DialogContent
+            class="sm:max-w-[425px] !z-[100]"
+            :aria-describedby="EDIT_PROFESSOR_DIALOG_DESC"
+        >
             <DialogHeader>
                 <DialogTitle>Modifier le professeur</DialogTitle>
-                <DialogDescription>
+                <DialogDescription :id="EDIT_PROFESSOR_DIALOG_DESC">
                     Modifiez les informations du professeur.
                 </DialogDescription>
             </DialogHeader>
