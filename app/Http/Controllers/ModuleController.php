@@ -138,4 +138,37 @@ class ModuleController extends Controller
             return back()->withErrors(['error' => $e->getMessage()]);
         }
     }
+
+    public function update(Request $request, Module $module)
+    {
+        try {
+            $validated = $request->validate([
+                'professor_id' => 'nullable|exists:professors,id',
+                'year_id' => 'nullable|exists:years,id',
+                'image' => 'nullable|image|max:2048'
+            ]);
+
+            \DB::beginTransaction();
+
+            if ($request->hasFile('image')) {
+                // Supprimer l'ancienne image si elle existe et n'est pas l'image par défaut
+                if ($module->image_path && $module->image_path !== '/storage/modules/default/default-module.jpg') {
+                    Storage::disk('public')->delete(str_replace('/storage/', '', $module->image_path));
+                }
+
+                // Enregistrer la nouvelle image
+                Storage::disk('public')->makeDirectory('modules');
+                $path = $request->file('image')->store('modules', 'public');
+                $validated['image_path'] = Storage::url($path);
+            }
+
+            $module->update(array_filter($validated));
+
+            \DB::commit();
+            return redirect()->back()->with('success', 'Module mis à jour avec succès');
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            return back()->withErrors(['error' => $e->getMessage()]);
+        }
+    }
 }

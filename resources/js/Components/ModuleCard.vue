@@ -72,11 +72,21 @@ const hasStudentChanges = computed(() => {
 const saveChanges = async () => {
     isLoading.value = true;
     try {
+        const formDataToSend = new FormData();
+
         if (hasChanges.value) {
-            await router.put(route('modules.updateProfessorAndYear', props.module.id), {
-                professor_id: formData.value.professor_id,
-                year_id: formData.value.year_id
-            });
+            formDataToSend.append('professor_id', formData.value.professor_id);
+            formDataToSend.append('year_id', formData.value.year_id);
+        }
+
+        if (formData.value.image) {
+            formDataToSend.append('image', formData.value.image);
+        }
+
+        // Utiliser put au lieu de post et passer _method pour Laravel
+        if (hasChanges.value || formData.value.image) {
+            formDataToSend.append('_method', 'PUT'); // Ajouter cette ligne
+            await router.post(route('modules.update', props.module.id), formDataToSend);
         }
 
         if (hasStudentChanges.value) {
@@ -88,7 +98,7 @@ const saveChanges = async () => {
         emit('showAlert', 'Module mis à jour avec succès', 'success');
         showDialog.value = false;
     } catch (error) {
-        emit('showAlert', 'Erreur lors de la mise à jour', 'error');
+        emit('showAlert', error.message || 'Erreur lors de la mise à jour', 'error');
     } finally {
         isLoading.value = false;
     }
@@ -160,6 +170,7 @@ const showDialog = ref(false);
 const imagePreview = ref(props.module.image_path || null);
 
 const handleImageUpload = (event) => {
+    event.stopPropagation(); // Arrêter la propagation de l'événement
     const file = event.target.files[0];
     if (file) {
         formData.value.image = file;
@@ -504,24 +515,26 @@ const deleteProfessor = async (professor, event) => {
                                         class="w-full h-full object-cover"
                                         alt="Preview"
                                     />
-                                    <div class="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                                        <label class="cursor-pointer">
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                class="hidden"
-                                                @change="handleImageUpload"
-                                            />
-                                            <Button variant="secondary" class="bg-white/90 hover:bg-white">
-                                                <i class="ri-image-edit-line mr-2"></i>
-                                                Changer l'image
-                                            </Button>
-                                        </label>
-                                    </div>
+                                    <Button
+                                        variant="secondary"
+                                        class="absolute inset-0 w-full h-full bg-black/30 opacity-0 hover:opacity-100 transition-opacity"
+                                        @click.stop="$refs.imageInput.click()"
+                                    >
+                                        <i class="ri-image-edit-line mr-2"></i>
+                                        Changer l'image
+                                    </Button>
+                                    <input
+                                        ref="imageInput"
+                                        type="file"
+                                        accept="image/*"
+                                        class="hidden"
+                                        @change="handleImageUpload"
+                                        @click.stop
+                                    />
                                 </div>
                                 <div class="flex-1">
                                     <p class="text-sm text-gray-500">
-                                        Survolez l'image pour la modifier.
+                                        Cliquez sur l'image pour la modifier.
                                         <br>
                                         Formats acceptés : JPG, PNG. Max 2MB.
                                     </p>
