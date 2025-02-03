@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Professor;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class ProfessorController extends Controller
 {
@@ -49,6 +50,21 @@ class ProfessorController extends Controller
             return back()->with('success', $successMessage);
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Une erreur est survenue lors de la suppression']);
+        }
+    }
+
+    public function update(Request $request, Professor $professor)
+    {
+        try {
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'email' => ['required', 'email', Rule::unique('professors')->ignore($professor->id)]
+            ]);
+
+            $professor->update($validated);
+            return redirect()->back()->with('success', 'Professeur modifié avec succès');
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
         }
     }
 }
