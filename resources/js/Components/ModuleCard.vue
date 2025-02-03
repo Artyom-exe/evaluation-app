@@ -115,26 +115,6 @@ const deleteModule = async () => {
     });
 };
 
-const saveStudents = async () => {
-    isLoading.value = true;
-    try {
-        await router.put(route('modules.updateStudents', props.module.id), {
-            emails: formData.value.studentEmails
-        }, {
-            preserveScroll: true,
-            onSuccess: () => {
-                emit('showAlert', 'Étudiants mis à jour avec succès', 'success');
-                showDialog.value = false;
-            },
-            onError: (errors) => {
-                emit('showAlert', 'Erreur lors de la mise à jour des étudiants', 'error');
-            }
-        });
-    } finally {
-        isLoading.value = false;
-    }
-};
-
 const showNewProfessorDialog = ref(false);
 const newProfessor = ref({ name: '', email: '' });
 const isCreatingProfessor = ref(false);
@@ -209,10 +189,29 @@ const addStudentsFromEmails = () => {
     }
 };
 
-// Fonction pour supprimer un étudiant
-const removeStudent = (emailToRemove) => {
-    const emails = formData.value.studentEmails.split(/[,\s]+/).filter(e => e);
-    formData.value.studentEmails = emails.filter(email => email !== emailToRemove).join(', ');
+// Corriger la fonction removeStudent
+const removeStudent = async (emailToRemove) => {
+    if (!confirm('Voulez-vous vraiment retirer cet étudiant du module ?')) {
+        return;
+    }
+
+    try {
+        await router.delete(route('modules.removeStudent', props.module.id), {
+            data: { email: emailToRemove },
+            preserveScroll: true,
+            onSuccess: (page) => {
+                // Mettre à jour l'interface après succès
+                const emails = formData.value.studentEmails.split(/[,\s]+/).filter(e => e);
+                formData.value.studentEmails = emails.filter(email => email !== emailToRemove).join(', ');
+                emit('showAlert', page.props.flash.success || 'Étudiant retiré avec succès', 'success');
+            },
+            onError: (errors) => {
+                emit('showAlert', errors.error || 'Erreur lors de la suppression de l\'étudiant', 'error');
+            }
+        });
+    } catch (error) {
+        emit('showAlert', 'Une erreur est survenue', 'error');
+    }
 };
 
 // Ajouter les états pour l'édition des professeurs
