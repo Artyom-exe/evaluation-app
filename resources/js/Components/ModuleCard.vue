@@ -416,7 +416,7 @@ const deleteProfessor = async (professor, event) => {
                                     variant="ghost"
                                     size="sm"
                                     @click="showNewProfessorDialog = true"
-                                    class="text-blue-600 hover:text-blue-700"
+                                    class="hover:text-black"
                                 >
                                     <i class="ri-add-line mr-1"></i>
                                     Nouveau
@@ -555,7 +555,7 @@ const deleteProfessor = async (professor, event) => {
                         Annuler
                     </Button>
                     <Button @click="saveChanges" :disabled="isLoading"
-                        class="bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50">
+                        class="bg-black text-white hover:bg-gray-800 disabled:opacity-50">
                         {{ isLoading ? 'Enregistrement...' : 'Enregistrer' }}
                     </Button>
                 </div>

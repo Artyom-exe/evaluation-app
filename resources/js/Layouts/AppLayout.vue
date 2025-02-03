@@ -759,7 +759,7 @@ const updateProfessor = async () => {
                             Annuler
                         </Button>
                         <Button @click="createModule" :disabled="isCreatingModule"
-                            class="bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50">
+                            class="bg-black text-white hover:bg-gray-800 disabled:opacity-50">
                             {{ isCreatingModule ? 'Création...' : 'Créer' }}
                         </Button>
                     </div>
