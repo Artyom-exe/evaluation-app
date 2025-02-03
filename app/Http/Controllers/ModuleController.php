@@ -9,6 +9,38 @@ use Illuminate\Support\Facades\Storage;
 
 class ModuleController extends Controller
 {
+    private const STORAGE_PATH = 'modules';
+    private const DEFAULT_IMAGE = '/storage/modules/default/default-module.jpg';
+
+    private function handleImage(Request $request, ?string $currentImagePath = null): ?string
+    {
+        if (!$request->hasFile('image')) {
+            return null;
+        }
+
+        if ($currentImagePath && $currentImagePath !== self::DEFAULT_IMAGE) {
+            Storage::disk('public')->delete(str_replace('/storage/', '', $currentImagePath));
+        }
+
+        Storage::disk('public')->makeDirectory(self::STORAGE_PATH);
+        return Storage::url($request->file('image')->store(self::STORAGE_PATH, 'public'));
+    }
+
+    private function handleStudents(Module $module, array $studentData): void
+    {
+        foreach ($studentData as $data) {
+            if (!isset($data['email']) || !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+                continue;
+            }
+
+            $student = Student::firstOrCreate(
+                ['email' => $data['email']],
+                ['name' => $data['name'] ?? null]
+            );
+            $module->students()->attach($student->id);
+        }
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -22,26 +54,12 @@ class ModuleController extends Controller
         try {
             \DB::beginTransaction();
 
-            if ($request->hasFile('image')) {
-                Storage::disk('public')->makeDirectory('modules');
-                $path = $request->file('image')->store('modules', 'public');
-                $validated['image_path'] = Storage::url($path);
-            } else {
-                $validated['image_path'] = '/storage/modules/default/default-module.jpg';
-            }
+            $validated['image_path'] = $this->handleImage($request) ?? self::DEFAULT_IMAGE;
 
             $module = Module::create($validated);
 
             $students = json_decode($request->students, true);
-            foreach ($students as $studentData) {
-                if (isset($studentData['email']) && filter_var($studentData['email'], FILTER_VALIDATE_EMAIL)) {
-                    $student = Student::firstOrCreate(
-                        ['email' => $studentData['email']],
-                        ['name' => $studentData['name'] ?? null]
-                    );
-                    $module->students()->attach($student->id);
-                }
-            }
+            $this->handleStudents($module, $students);
 
             \DB::commit();
             return redirect()->back()->with('success', 'Module créé avec succès');
@@ -150,17 +168,7 @@ class ModuleController extends Controller
 
             \DB::beginTransaction();
 
-            if ($request->hasFile('image')) {
-                // Supprimer l'ancienne image si elle existe et n'est pas l'image par défaut
-                if ($module->image_path && $module->image_path !== '/storage/modules/default/default-module.jpg') {
-                    Storage::disk('public')->delete(str_replace('/storage/', '', $module->image_path));
-                }
-
-                // Enregistrer la nouvelle image
-                Storage::disk('public')->makeDirectory('modules');
-                $path = $request->file('image')->store('modules', 'public');
-                $validated['image_path'] = Storage::url($path);
-            }
+            $validated['image_path'] = $this->handleImage($request, $module->image_path);
 
             $module->update(array_filter($validated));
 
