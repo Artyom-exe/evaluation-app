@@ -206,6 +206,34 @@ const handleSheetClose = (val) => {
 };
 
 const showNewModuleDialog = ref(false);
+
+// Ajouter les états pour l'édition
+const showEditProfessorDialog = ref(false);
+const editingProfessor = ref({ id: null, name: '', email: '' });
+
+// Ajouter la fonction d'édition
+const editProfessor = (professor) => {
+    editingProfessor.value = { ...professor };
+    showEditProfessorDialog.value = true;
+};
+
+// Ajouter la fonction de mise à jour
+const updateProfessor = async () => {
+    try {
+        await router.put(route('professors.update', editingProfessor.value.id), editingProfessor.value, {
+            preserveScroll: true,
+            onSuccess: () => {
+                showEditProfessorDialog.value = false;
+                showAlert('Professeur modifié avec succès');
+            },
+            onError: (errors) => {
+                showAlert(Object.values(errors)[0], 'error');
+            }
+        });
+    } catch (error) {
+        showAlert('Une erreur est survenue', 'error');
+    }
+};
 </script>
 
 <template>
@@ -615,14 +643,24 @@ const showNewModuleDialog = ref(false);
                                                     ({{ professor.email }})
                                                 </span>
                                             </SelectItem>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                @click.stop="(e) => deleteProfessor(professor, e)"
-                                                class="text-red-500 hover:text-red-700"
-                                            >
-                                                <i class="ri-delete-bin-line"></i>
-                                            </Button>
+                                            <div class="flex gap-2">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    @click.stop="editProfessor(professor)"
+                                                    class="text-blue-500 hover:text-blue-700"
+                                                >
+                                                    <i class="ri-edit-line"></i>
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    @click.stop="(e) => deleteProfessor(professor, e)"
+                                                    class="text-red-500 hover:text-red-700"
+                                                >
+                                                    <i class="ri-delete-bin-line"></i>
+                                                </Button>
+                                            </div>
                                         </div>
                                     </div>
                                 </SelectContent>
@@ -749,6 +787,36 @@ const showNewModuleDialog = ref(false);
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+
+        <!-- Dialog pour modifier professeur -->
+        <Dialog :open="showEditProfessorDialog" @update:open="showEditProfessorDialog = false">
+            <DialogContent class="sm:max-w-[425px] z-[100]">
+                <DialogHeader>
+                    <DialogTitle>Modifier le professeur</DialogTitle>
+                    <DialogDescription>
+                        Modifiez les informations du professeur.
+                    </DialogDescription>
+                </DialogHeader>
+                <div class="space-y-4 py-4">
+                    <div class="space-y-2">
+                        <Label>Nom complet</Label>
+                        <Input v-model="editingProfessor.name" placeholder="Nom du professeur" />
+                    </div>
+                    <div class="space-y-2">
+                        <Label>Email</Label>
+                        <Input v-model="editingProfessor.email" type="email" placeholder="Email professionnel" />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" @click="showEditProfessorDialog = false">
+                        Annuler
+                    </Button>
+                    <Button @click="updateProfessor">
+                        Modifier
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </div>
 </template>
 
@@ -764,5 +832,14 @@ const showNewModuleDialog = ref(false);
 /* Ajout des styles pour le dialog */
 :root {
     --dialog-padding: 1.5rem;
+}
+
+/* Assurer que le dialog est toujours au-dessus des autres éléments */
+.DialogOverlay {
+    z-index: 99 !important;
+}
+
+.DialogContent {
+    z-index: 100 !important;
 }
 </style>

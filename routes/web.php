@@ -40,5 +40,6 @@ Route::middleware([
 
     // Ajouter cette nouvelle route
     Route::post('/professors', [ProfessorController::class, 'store'])->name('professors.store');
+    Route::put('/professors/{professor}', [ProfessorController::class, 'update'])->name('professors.update');
     Route::delete('/professors/{professor}', [ProfessorController::class, 'destroy'])->name('professors.destroy');
 });
