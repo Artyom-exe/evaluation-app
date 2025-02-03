@@ -60,6 +60,7 @@ class ModuleController extends Controller
         }
     }
 
+    // Modification de la méthode destroy pour supprimer les étudiants associés
     public function destroy(Module $module)
     {
         try {
@@ -68,9 +69,12 @@ class ModuleController extends Controller
                     'error' => "Impossible de supprimer le module \"{$module->name}\" car il est déjà associé à un ou plusieurs formulaires"
                 ]);
             }
-            $module->students()->detach();
+            // Supprimer chaque étudiant associé
+            foreach ($module->students as $student) {
+                $student->delete();
+            }
             $module->delete();
-            return redirect()->back()->with('success', 'Module supprimé avec succès');
+            return redirect()->back()->with('success', 'Module et étudiants supprimés avec succès');
         } catch (\Exception $e) {
             return back()->withErrors(['error' => "Une erreur est survenue lors de la suppression du module"]);
         }
