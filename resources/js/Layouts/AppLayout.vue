@@ -101,19 +101,20 @@ const createProfessor = async () => {
 };
 
 // Ajouter la fonction de suppression de professeur
-const deleteProfessor = async (professorId, event) => {
+const deleteProfessor = async (professor, event) => {
     event.preventDefault();
     event.stopPropagation();
 
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ce professeur ?')) {
+    const confirmMessage = `Êtes-vous sûr de vouloir supprimer ce professeur : ${professor.name} (${professor.email}) ?`;
+    if (!confirm(confirmMessage)) {
         return;
     }
 
     try {
-        await router.delete(route('professors.destroy', professorId), {
+        await router.delete(route('professors.destroy', professor.id), {
             preserveScroll: true,
             onSuccess: (page) => {
-                showAlert('Professeur supprimé avec succès');
+                showAlert(page.props?.flash?.success || 'Professeur supprimé avec succès');
             },
             onError: (errors) => {
                 showAlert(errors.error, 'error');
@@ -609,11 +610,15 @@ const showNewModuleDialog = ref(false);
                                         >
                                             <SelectItem :value="String(professor.id)">
                                                 {{ professor.name }}
+                                                <span v-if="$page.props.professors.filter(p => p.name === professor.name).length > 1"
+                                                      class="text-sm text-gray-500 ml-1">
+                                                    ({{ professor.email }})
+                                                </span>
                                             </SelectItem>
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
-                                                @click.stop="(e) => deleteProfessor(professor.id, e)"
+                                                @click.stop="(e) => deleteProfessor(professor, e)"
                                                 class="text-red-500 hover:text-red-700"
                                             >
                                                 <i class="ri-delete-bin-line"></i>
