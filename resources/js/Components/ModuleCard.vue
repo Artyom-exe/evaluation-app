@@ -212,14 +212,14 @@ const removeStudent = async (emailToRemove) => {
         await router.delete(route('modules.removeStudent', props.module.id), {
             data: { email: emailToRemove },
             preserveScroll: true,
-            onSuccess: (page) => {
-                // Mettre à jour l'interface après succès
+            onSuccess: () => {
+                // Mettre à jour l'interface immédiatement après succès
                 const emails = formData.value.studentEmails.split(/[,\s]+/).filter(e => e);
                 formData.value.studentEmails = emails.filter(email => email !== emailToRemove).join(', ');
-                emit('showAlert', page.props.flash.success || 'Étudiant retiré avec succès', 'success');
+                emit('showAlert', 'Étudiant retiré avec succès', 'success');
             },
-            onError: (errors) => {
-                emit('showAlert', errors.error || 'Erreur lors de la suppression de l\'étudiant', 'error');
+            onError: (error) => {
+                emit('showAlert', error?.error || 'Erreur lors de la suppression de l\'étudiant', 'error');
             }
         });
     } catch (error) {
