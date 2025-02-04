@@ -4,6 +4,9 @@ namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use App\Models\Module;
+use App\Models\Year;
+use App\Models\Professor;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -36,7 +39,9 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         return array_merge(parent::share($request), [
-            //
+            'modules' => Module::with(['professor', 'year'])->orderBy('name')->get(),
+            'years' => Year::all(),
+            'professors' => Professor::all(),
         ]);
     }
 }

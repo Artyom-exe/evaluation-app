@@ -33,8 +33,9 @@ class FormController extends Controller
      */
     public function create()
     {
+        $modules = Module::with(['students', 'professor', 'year'])->get();
         return Inertia::render('Forms/Create', [
-            'modules' => Module::with('professor')->get(),
+            'modules' => $modules,
             'questionTypes' => QuestionType::all() // Utilisation du modèle QuestionType
         ]);
     }
@@ -130,9 +131,10 @@ class FormController extends Controller
      */
     public function edit(Form $form)
     {
+        $modules = Module::with(['students', 'professor', 'year'])->get();
         return Inertia::render('Forms/Edit', [
             'form' => Form::with(['questions.choices', 'questions.questionType'])->find($form->id),
-            'modules' => Module::with('professor')->get(),
+            'modules' => $modules,
             'questionTypes' => QuestionType::all()
         ]);
     }
