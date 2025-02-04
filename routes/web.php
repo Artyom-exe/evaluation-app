@@ -8,14 +8,9 @@ use App\Http\Controllers\QuestionTypeController;
 use App\Http\Controllers\ModuleController;
 use App\Http\Controllers\ProfessorController;
 
-
+// Remplacer la route racine et la route dashboard
 Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
+    return redirect()->route('forms.index');
 });
 
 Route::middleware([
@@ -24,20 +19,22 @@ Route::middleware([
     'verified',
 ])->group(function () {
     Route::get('/dashboard', function () {
-        return Inertia::render('Dashboard');
+        return redirect()->route('forms.index');
     })->name('dashboard');
 
     Route::resource('forms', FormController::class);
     Route::post('/forms/{form}/duplicate', [FormController::class, 'duplicate'])->name('forms.duplicate');
 
-    // Mise à jour des routes pour les modules
+    // Module routes
     Route::prefix('modules')->name('modules.')->group(function () {
         Route::post('/', [ModuleController::class, 'store'])->name('store');
+        Route::put('{module}/update', [ModuleController::class, 'update'])->name('update');
         Route::put('{module}/students', [ModuleController::class, 'updateStudents'])->name('updateStudents');
-        Route::put('{module}/update', [ModuleController::class, 'updateProfessorAndYear'])->name('updateProfessorAndYear');
         Route::delete('{module}', [ModuleController::class, 'destroy'])->name('destroy');
+        Route::delete('{module}/students', [ModuleController::class, 'removeStudent'])->name('removeStudent');
+        Route::get('/', [ModuleController::class, 'index'])->name('index');
     });
 
-    // Ajouter cette nouvelle route
-    Route::post('/professors', [ProfessorController::class, 'store'])->name('professors.store');
+    // Professor routes
+    Route::resource('professors', ProfessorController::class)->only(['store', 'update', 'destroy']);
 });

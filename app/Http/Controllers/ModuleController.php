@@ -3,86 +3,64 @@
 namespace App\Http\Controllers;
 
 use App\Models\Module;
-use App\Models\Professor;
 use App\Models\Student;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class ModuleController extends Controller
 {
-    public function updateStudents(Request $request, Module $module)
+    private const STORAGE_PATH = 'modules';
+    private const DEFAULT_IMAGE = '/storage/modules/default/default-module.jpg';
+
+    // Gestion centralisée de l'image
+    private function handleImage(Request $request, ?string $currentImagePath = null): ?string
     {
-        try {
-            $validated = $request->validate([
-                'emails' => 'required|string'
-            ]);
-
-            \DB::beginTransaction();
-
-            $emails = array_map('trim', explode(',', $validated['emails']));
-            $emails = array_filter($emails, 'filter_var', FILTER_VALIDATE_EMAIL);
-
-            $module->students()->detach();
-
-            foreach ($emails as $email) {
-                $student = Student::firstOrCreate(['email' => $email]);
-                $module->students()->attach($student->id);
-            }
-
-            \DB::commit();
-            return redirect()->back()->with('success', 'Étudiants mis à jour avec succès');
-        } catch (\Exception $e) {
-            \DB::rollBack();
-            return back()->withErrors(['error' => $e->getMessage()]);
+        if (!$request->hasFile('image')) return null;
+        if ($currentImagePath && $currentImagePath !== self::DEFAULT_IMAGE) {
+            Storage::disk('public')->delete(str_replace('/storage/', '', $currentImagePath));
         }
+        Storage::disk('public')->makeDirectory(self::STORAGE_PATH);
+        return Storage::url($request->file('image')->store(self::STORAGE_PATH, 'public'));
     }
 
-    public function updateProfessor(Request $request, Module $module)
+    // Gestion centralisée des étudiants
+    private function handleStudents(Module $module, array $studentData): void
     {
-        try {
-            $validated = $request->validate([
-                'professor_id' => 'required|exists:professors,id'
-            ]);
-
-            $module->update(['professor_id' => $validated['professor_id']]);
-            return response()->json(['message' => 'Professeur mis à jour avec succès']);
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
-        }
-    }
-
-    public function updateProfessorAndYear(Request $request, Module $module)
-    {
-        try {
-            $validated = $request->validate([
-                'professor_id' => 'required|exists:professors,id',
-                'year_id' => 'required|exists:years,id'
-            ]);
-
-            $module->update($validated);
-
-            return redirect()->back()->with('success', 'Module mis à jour avec succès');
-        } catch (\Exception $e) {
-            return back()->withErrors(['error' => $e->getMessage()]);
+        foreach ($studentData as $data) {
+            if (!isset($data['email']) || !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) continue;
+            $student = Student::firstOrCreate(
+                ['email' => $data['email']],
+                ['name' => $data['name'] ?? null]
+            );
+            $module->students()->attach($student->id);
         }
     }
 
     public function store(Request $request)
     {
+        $validated = $request->validate([
+            'name'         => 'required|string|max:255',
+            'year_id'      => 'required|exists:years,id',
+            'professor_id' => 'required|exists:professors,id',
+            'image'        => 'nullable|image|max:2048',
+            'students'     => 'required|json'
+        ]);
+
         try {
-            $validated = $request->validate([
-                'name' => 'required|string|max:255',
-                'professor_id' => 'required|exists:professors,id',
-                'year_id' => 'required|exists:years,id'
-            ]);
-
+            \DB::beginTransaction();
+            $validated['image_path'] = $this->handleImage($request) ?? self::DEFAULT_IMAGE;
             $module = Module::create($validated);
-
+            $students = json_decode($request->students, true);
+            $this->handleStudents($module, $students);
+            \DB::commit();
             return redirect()->back()->with('success', 'Module créé avec succès');
         } catch (\Exception $e) {
-            return back()->withErrors(['error' => $e->getMessage()]);
+            \DB::rollBack();
+            return back()->withErrors(['error' => "Une erreur est survenue lors de la création du module: " . $e->getMessage()]);
         }
     }
 
+    // Modification de la méthode destroy pour supprimer les étudiants associés
     public function destroy(Module $module)
     {
         try {
@@ -91,15 +69,89 @@ class ModuleController extends Controller
                     'error' => "Impossible de supprimer le module \"{$module->name}\" car il est déjà associé à un ou plusieurs formulaires"
                 ]);
             }
-
-            $module->students()->detach();
+            // Supprimer chaque étudiant associé
+            foreach ($module->students as $student) {
+                $student->delete();
+            }
             $module->delete();
-
-            return redirect()->back()->with('success', 'Module supprimé avec succès');
+            return redirect()->back()->with('success', 'Module et étudiants supprimés avec succès');
         } catch (\Exception $e) {
-            return back()->withErrors([
-                'error' => "Une erreur est survenue lors de la suppression du module"
+            return back()->withErrors(['error' => "Une erreur est survenue lors de la suppression du module"]);
+        }
+    }
+
+    public function updateProfessorAndYear(Request $request, Module $module)
+    {
+        try {
+            $validated = $request->validate([
+                'professor_id' => 'required|exists:professors,id',
+                'year_id'      => 'required|exists:years,id'
             ]);
+            $module->update($validated);
+            return redirect()->back()->with('success', 'Module mis à jour avec succès');
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
+        }
+    }
+
+    public function updateStudents(Request $request, Module $module)
+    {
+        try {
+            $validated = $request->validate([
+                'emails' => 'required|string'
+            ]);
+            \DB::beginTransaction();
+            $emails = array_map('trim', explode(',', $validated['emails']));
+            $emails = array_filter($emails, 'filter_var', FILTER_VALIDATE_EMAIL);
+            $module->students()->detach();
+            foreach ($emails as $email) {
+                $student = Student::firstOrCreate(['email' => $email]);
+                $module->students()->attach($student->id);
+            }
+            \DB::commit();
+            return redirect()->back()->with('success', 'Étudiants mis à jour avec succès');
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            return back()->withErrors(['error' => $e->getMessage()]);
+        }
+    }
+
+    public function removeStudent(Module $module, Request $request)
+    {
+        try {
+            $validated = $request->validate(['email' => 'required|email']);
+            \DB::beginTransaction();
+            $student = Student::where('email', $validated['email'])->first();
+            if ($student) {
+                $module->students()->detach($student->id);
+                if ($student->modules()->count() === 0) {
+                    $student->delete();
+                }
+            }
+            \DB::commit();
+            return redirect()->back()->with('success', 'Étudiant retiré avec succès');
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            return back()->withErrors(['error' => $e->getMessage()]);
+        }
+    }
+
+    public function update(Request $request, Module $module)
+    {
+        try {
+            $validated = $request->validate([
+                'professor_id' => 'nullable|exists:professors,id',
+                'year_id'      => 'nullable|exists:years,id',
+                'image'        => 'nullable|image|max:2048'
+            ]);
+            \DB::beginTransaction();
+            $validated['image_path'] = $this->handleImage($request, $module->image_path);
+            $module->update(array_filter($validated));
+            \DB::commit();
+            return redirect()->back()->with('success', 'Module mis à jour avec succès');
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            return back()->withErrors(['error' => $e->getMessage()]);
         }
     }
 }

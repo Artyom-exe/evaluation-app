@@ -1,29 +1,34 @@
 <script setup>
+// Core imports
 import { ref, computed, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
+
+// UI Components - Remove unused imports
 import { Button } from '@/Components/ui/button';
-import { Textarea } from "@/Components/ui/textarea";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/Components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/Components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/Components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/Components/ui/select";
 import { Input } from "@/Components/ui/input";
 import { Label } from "@/Components/ui/label";
 
+// Centralisation des IDs pour les dialogues
+const DIALOG_IDS = {
+    MODULE: 'module-edit-description',
+    NEW_PROFESSOR: 'module-new-professor-description',
+    EDIT_PROFESSOR: 'module-edit-professor-description'
+};
+
 const props = defineProps({
-    module: Object,
+    module: {
+        type: Object,
+        required: true
+    },
     professors: Array,
     years: Array,
 });
 
 const emit = defineEmits(['showAlert']);
-const isExpanded = ref(false);
 const isLoading = ref(false);
-const activeTab = ref('details'); // Nouvelle ref pour la gestion des onglets
+const showDialog = ref(false);
 
 // État initial des données
 const formData = ref({
@@ -68,11 +73,21 @@ const hasStudentChanges = computed(() => {
 const saveChanges = async () => {
     isLoading.value = true;
     try {
+        const formDataToSend = new FormData();
+
         if (hasChanges.value) {
-            await router.put(route('modules.updateProfessorAndYear', props.module.id), {
-                professor_id: formData.value.professor_id,
-                year_id: formData.value.year_id
-            });
+            formDataToSend.append('professor_id', formData.value.professor_id);
+            formDataToSend.append('year_id', formData.value.year_id);
+        }
+
+        if (formData.value.image) {
+            formDataToSend.append('image', formData.value.image);
+        }
+
+        // Utiliser put au lieu de post et passer _method pour Laravel
+        if (hasChanges.value || formData.value.image) {
+            formDataToSend.append('_method', 'PUT'); // Ajouter cette ligne
+            await router.post(route('modules.update', props.module.id), formDataToSend);
         }
 
         if (hasStudentChanges.value) {
@@ -82,9 +97,9 @@ const saveChanges = async () => {
         }
 
         emit('showAlert', 'Module mis à jour avec succès', 'success');
-        isExpanded.value = false;
+        showDialog.value = false;
     } catch (error) {
-        emit('showAlert', 'Erreur lors de la mise à jour', 'error');
+        emit('showAlert', error.message || 'Erreur lors de la mise à jour', 'error');
     } finally {
         isLoading.value = false;
     }
@@ -111,26 +126,6 @@ const deleteModule = async () => {
     });
 };
 
-const saveStudents = async () => {
-    isLoading.value = true;
-    try {
-        await router.put(route('modules.updateStudents', props.module.id), {
-            emails: formData.value.studentEmails
-        }, {
-            preserveScroll: true,
-            onSuccess: () => {
-                emit('showAlert', 'Étudiants mis à jour avec succès', 'success');
-                isExpanded.value = false;
-            },
-            onError: (errors) => {
-                emit('showAlert', 'Erreur lors de la mise à jour des étudiants', 'error');
-            }
-        });
-    } finally {
-        isLoading.value = false;
-    }
-};
-
 const showNewProfessorDialog = ref(false);
 const newProfessor = ref({ name: '', email: '' });
 const isCreatingProfessor = ref(false);
@@ -153,171 +148,416 @@ const createProfessor = async () => {
         isCreatingProfessor.value = false;
     }
 };
+
+const showImagePreview = ref(false);
+const isHovered = ref(false);
+
+// Ajout de computed properties pour une meilleure gestion des états
+const cardStateClass = computed(() => ({
+    'transform scale-100 shadow-lg': showDialog.value || isHovered.value,
+    'transform scale-98 hover:scale-100': !showDialog.value,
+    'opacity-95 hover:opacity-100': !showDialog.value,
+}));
+
+const statusIndicator = computed(() => {
+    if (!props.module.professor) return { color: 'bg-yellow-400', text: 'En attente de professeur' };
+    if (!props.module.students?.length) return { color: 'bg-orange-400', text: 'Sans étudiants' };
+    return { color: 'bg-green-400', text: 'Actif' };
+});
+
+// Ajouter les refs pour la gestion de l'image
+const imagePreview = ref(props.module.image_path || null);
+
+const handleImageUpload = (event) => {
+    event.stopPropagation(); // Arrêter la propagation de l'événement
+    const file = event.target.files[0];
+    if (file) {
+        formData.value.image = file;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            imagePreview.value = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+};
+
+// Ajouter une ref pour la gestion des emails en cours d'ajout
+const studentsEmails = ref('');
+
+// Fonction pour ajouter des étudiants depuis le textarea
+const addStudentsFromEmails = () => {
+    const emails = studentsEmails.value
+        .split(/[\n,]/)
+        .map(email => email.trim())
+        .filter(email => email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
+
+    if (emails.length) {
+        const currentEmails = formData.value.studentEmails.split(/[,\s]+/).filter(e => e);
+        const newEmails = [...new Set([...currentEmails, ...emails])];
+        formData.value.studentEmails = newEmails.join(', ');
+        studentsEmails.value = '';
+    }
+};
+
+// Simplification de removeStudent
+const removeStudent = async (emailToRemove) => {
+    if (!confirm('Voulez-vous vraiment retirer cet étudiant du module ?')) return;
+    try {
+        await router.delete(route('modules.removeStudent', props.module.id), {
+            data: { email: emailToRemove },
+            preserveScroll: true,
+        });
+        // Mise à jour immédiate des emails
+        const emails = formData.value.studentEmails.split(/[,\s]+/).filter(e => e);
+        formData.value.studentEmails = emails.filter(email => email !== emailToRemove).join(', ');
+        emit('showAlert', 'Étudiant retiré avec succès', 'success');
+    } catch (error) {
+        emit('showAlert', error?.error || 'Erreur lors de la suppression de l’étudiant', 'error');
+    }
+};
+
+// Ajouter les états pour l'édition des professeurs
+const showEditProfessorDialog = ref(false);
+const editingProfessor = ref({ id: null, name: '', email: '' });
+const isEditingProfessor = ref(false);
+
+// Fonction pour éditer un professeur
+const editProfessor = (professor) => {
+    editingProfessor.value = { ...professor };
+    showEditProfessorDialog.value = true;
+};
+
+// Fonction pour mettre à jour un professeur
+const updateProfessor = async () => {
+    isEditingProfessor.value = true;
+    try {
+        await router.put(route('professors.update', editingProfessor.value.id), editingProfessor.value, {
+            preserveScroll: true,
+            onSuccess: () => {
+                showEditProfessorDialog.value = false;
+                emit('showAlert', 'Professeur modifié avec succès', 'success');
+            },
+            onError: () => {
+                emit('showAlert', 'Erreur lors de la modification du professeur', 'error');
+            }
+        });
+    } finally {
+        isEditingProfessor.value = false;
+    }
+};
+
+// Fonction pour supprimer un professeur
+const deleteProfessor = async (professor, event) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!confirm(`Voulez-vous vraiment supprimer le professeur ${professor.name} ?`)) {
+        return;
+    }
+
+    try {
+        await router.delete(route('professors.destroy', professor.id), {
+            preserveScroll: true,
+            onSuccess: () => {
+                emit('showAlert', 'Professeur supprimé avec succès', 'success');
+            },
+            onError: () => {
+                emit('showAlert', 'Erreur lors de la suppression du professeur', 'error');
+            }
+        });
+    } catch (error) {
+        emit('showAlert', 'Une erreur est survenue', 'error');
+    }
+};
 </script>
 
 <template>
-    <div class="bg-white rounded-lg shadow-lg overflow-hidden transition-all duration-300 ease-out"
-         :class="{ 'h-auto scale-100 opacity-100': isExpanded, 'h-[260px] scale-98 opacity-95': !isExpanded }">
-        <div class="relative" :class="{ 'h-full': !isExpanded }">
-            <!-- Header non-expansé -->
-            <div v-if="!isExpanded" class="h-full flex flex-col">
-                <div class="cursor-pointer group flex-1" @click="isExpanded = true">
-                    <img :src="module.image || defaultImage"
-                         class="w-full h-32 object-cover transition-opacity group-hover:opacity-90"
-                         alt="Module image">
-                    <div class="p-4 space-y-3">
-                        <h3 class="text-base font-semibold group-hover:text-blue-600 line-clamp-1">{{ module.name }}</h3>
-                        <div class="space-y-1">
-                            <div class="flex items-center gap-2 text-sm text-gray-600">
-                                <i class="ri-user-line w-4 flex-shrink-0"></i>
-                                <span class="truncate">{{ module.professor?.name || 'Aucun professeur' }}</span>
-                            </div>
-                            <div class="flex items-center gap-2 text-sm text-gray-600">
-                                <i class="ri-calendar-line w-4 flex-shrink-0"></i>
-                                <span class="truncate">{{ module.year?.name || 'Année non définie' }}</span>
-                            </div>
-                            <div class="flex items-center gap-2 text-sm text-gray-500">
-                                <i class="ri-team-line w-4 flex-shrink-0"></i>
-                                <span class="truncate">{{ module.students?.length || 0 }} étudiants</span>
-                            </div>
-                        </div>
+    <div class="relative bg-white rounded-lg overflow-hidden transition-all duration-300 ease-out"
+         :class="cardStateClass"
+         @mouseenter="isHovered = true"
+         @mouseleave="isHovered = false">
+
+        <!-- Status indicator -->
+        <div class="absolute top-2 left-2 z-10 flex items-center gap-2">
+            <span class="flex items-center gap-1.5">
+                <span :class="[statusIndicator.color, 'w-2 h-2 rounded-full']"></span>
+                <span class="text-xs font-medium text-gray-600 bg-white/90 px-2 py-0.5 rounded-full">
+                    {{ statusIndicator.text }}
+                </span>
+            </span>
+        </div>
+
+        <!-- Card view -->
+        <div class="h-full">
+            <div class="cursor-pointer group" @click="showDialog = true">
+                <!-- Image container avec preview -->
+                <div class="relative aspect-w-16 aspect-h-9 group">
+                    <img :src="module.image_path || defaultImage"
+                         :alt="module.name"
+                         class="object-cover w-full h-full transition-transform duration-300"
+                         :class="{'scale-105': isHovered}"
+                    />
+                    <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <Button variant="secondary" class="bg-white/90 hover:bg-white">
+                            <i class="ri-edit-line mr-1"></i>
+                            Modifier
+                        </Button>
                     </div>
                 </div>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    @click.stop="deleteModule"
-                    class="absolute top-2 right-2 text-red-500 hover:text-red-700 bg-white/80 hover:bg-white"
-                >
-                    <i class="ri-delete-bin-line"></i>
-                </Button>
-            </div>
 
-            <!-- Contenu expansé -->
-            <div v-else class="bg-white w-full transition-all duration-300 ease-out"
-                 :class="{ 'opacity-100 translate-y-0': isExpanded, 'opacity-0 -translate-y-4': !isExpanded }">
-                <div class="flex flex-col">
-                    <!-- En-tête -->
-                    <div class="flex items-center justify-between p-4 border-b">
-                        <h3 class="text-lg font-semibold">{{ module.name }}</h3>
-                        <Button variant="ghost" size="sm" @click="isExpanded = false">
-                            <i class="ri-close-line"></i>
-                        </Button>
+                <!-- Content -->
+                <div class="p-4 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-base font-semibold group-hover:text-blue-600 line-clamp-1">
+                            {{ module.name }}
+                        </h3>
                     </div>
 
-                    <!-- Onglets -->
-                    <div class="flex border-b">
-                        <button
-                            @click="activeTab = 'details'"
-                            :class="[
-                                'px-4 py-2 border-b-2 transition-colors',
-                                activeTab === 'details'
-                                    ? 'border-blue-500 text-blue-600'
-                                    : 'border-transparent hover:border-gray-300'
-                            ]"
-                        >
-                            Détails
-                        </button>
-                        <button
-                            @click="activeTab = 'students'"
-                            :class="[
-                                'px-4 py-2 border-b-2 transition-colors',
-                                activeTab === 'students'
-                                    ? 'border-blue-500 text-blue-600'
-                                    : 'border-transparent hover:border-gray-300'
-                            ]"
-                        >
-                            Étudiants
-                        </button>
-                    </div>
-
-                    <!-- Contenu des onglets avec scroll contrôlé -->
-                    <div class="flex-1">
-                        <div class="p-4">
-                            <div v-if="activeTab === 'details'" class="space-y-4">
-                                <div class="space-y-2">
-                                    <div class="flex items-center justify-between">
-                                        <label class="text-sm font-medium">Professeur</label>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            @click="showNewProfessorDialog = true"
-                                            class="text-blue-600 hover:text-blue-700"
-                                        >
-                                            <i class="ri-add-line mr-1"></i>
-                                            Nouveau
-                                        </Button>
-                                    </div>
-                                    <Select v-model="formData.professor_id">
-                                        <SelectTrigger>
-                                            <SelectValue :placeholder="selectedProf.label" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem
-                                                v-for="professor in professors"
-                                                :key="professor.id"
-                                                :value="professor.id.toString()"
-                                            >
-                                                {{ professor.name }}
-                                            </SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div class="space-y-2">
-                                    <label class="text-sm font-medium">Année</label>
-                                    <Select v-model="formData.year_id">
-                                        <SelectTrigger>
-                                            <SelectValue :placeholder="selectedYear.label" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem
-                                                v-for="year in years"
-                                                :key="year.id"
-                                                :value="year.id.toString()"
-                                            >
-                                                {{ year.name }}
-                                            </SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                    <!-- Info grid -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="space-y-1">
+                            <div class="flex items-center gap-2 text-sm text-gray-600">
+                                <i class="ri-user-line w-4"></i>
+                                <span class="truncate">{{ module.professor?.name || 'Non assigné' }}</span>
                             </div>
-
-                            <div v-else-if="activeTab === 'students'" class="space-y-4">
-                                <div class="space-y-2">
-                                    <label class="text-sm font-medium">Emails des étudiants</label>
-                                    <Textarea
-                                        v-model="formData.studentEmails"
-                                        placeholder="Entrez les emails séparés par des virgules"
-                                        rows="8"
-                                    />
-                                </div>
+                            <div class="flex items-center gap-2 text-sm text-gray-600">
+                                <i class="ri-calendar-line w-4"></i>
+                                <span class="truncate">{{ module.year?.name || 'Non défini' }}</span>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Actions avec position fixe -->
-                    <div class="border-t p-4 flex justify-end gap-2 bg-gray-50">
-                        <Button variant="outline" @click="isExpanded = false">
-                            Annuler
-                        </Button>
-                        <Button
-                            @click="saveChanges"
-                            :disabled="isLoading || (!hasChanges && !hasStudentChanges)"
-                        >
-                            {{ isLoading ? 'Enregistrement...' : 'Enregistrer' }}
-                        </Button>
+                        <div class="flex flex-col items-end justify-center">
+                            <div class="text-2xl font-semibold text-gray-900">
+                                {{ module.students?.length || 0 }}
+                            </div>
+                            <div class="text-sm text-gray-500">Étudiants</div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- Quick actions -->
+        <div class="absolute top-2 right-2 flex items-center gap-1 opacity-0 transition-opacity"
+             :class="{'opacity-100': isHovered}">
+            <Button
+                variant="ghost"
+                size="sm"
+                class="bg-white/90 hover:bg-white shadow-sm"
+                @click.stop="showDialog = true"
+            >
+                <i class="ri-edit-line"></i>
+            </Button>
+            <Button
+                variant="ghost"
+                size="sm"
+                class="bg-white/90 hover:bg-red-50 text-red-500 hover:text-red-600 shadow-sm"
+                @click.stop="deleteModule"
+            >
+                <i class="ri-delete-bin-line"></i>
+            </Button>
+        </div>
     </div>
 
+    <!-- Dialog pour l'édition du module -->
+    <Dialog :open="showDialog" @update:open="showDialog = $event">
+        <DialogContent
+            class="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] w-[90vw] sm:max-w-[600px] max-h-[85vh] !p-0 flex flex-col bg-white rounded-lg overflow-hidden"
+            :aria-describedby="DIALOG_IDS.MODULE"
+        >
+            <!-- En-tête fixe -->
+            <div class="flex-none bg-white border-b">
+                <div class="p-6">
+                    <DialogHeader>
+                        <DialogTitle class="text-xl font-semibold">Modifier le module</DialogTitle>
+                        <DialogDescription :id="DIALOG_IDS.MODULE" class="text-sm text-gray-500">
+                            Modifier les informations du module {{ module.name }}
+                        </DialogDescription>
+                    </DialogHeader>
+                </div>
+            </div>
+
+            <!-- Corps scrollable avec padding fixe -->
+            <div class="flex-1 overflow-y-auto">
+                <div class="p-6 space-y-6">
+                    <!-- Informations de base du module -->
+                    <div class="space-y-4">
+                        <div class="space-y-2">
+                            <Label>Année</Label>
+                            <Select v-model="formData.year_id">
+                                <SelectTrigger>
+                                    <SelectValue :placeholder="selectedYear.label" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem
+                                        v-for="year in years"
+                                        :key="year.id"
+                                        :value="String(year.id)"
+                                    >
+                                        {{ year.name }}
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between">
+                                <Label>Professeur</Label>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    @click="showNewProfessorDialog = true"
+                                    class="text-blue-600 hover:text-blue-700"
+                                >
+                                    <i class="ri-add-line mr-1"></i>
+                                    Nouveau
+                                </Button>
+                            </div>
+                            <Select v-model="formData.professor_id">
+                                <SelectTrigger>
+                                    <SelectValue :placeholder="selectedProf.label" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <div class="max-h-[200px] overflow-y-auto">
+                                        <div v-for="professor in professors"
+                                             :key="professor.id"
+                                             class="flex items-center justify-between p-2 hover:bg-gray-100"
+                                        >
+                                            <SelectItem :value="String(professor.id)">
+                                                {{ professor.name }}
+                                                <span v-if="professors.filter(p => p.name === professor.name).length > 1"
+                                                      class="text-sm text-gray-500 ml-1">
+                                                    ({{ professor.email }})
+                                                </span>
+                                            </SelectItem>
+                                            <div class="flex gap-2">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    @click.stop="editProfessor(professor)"
+                                                    class="text-blue-500 hover:text-blue-700"
+                                                >
+                                                    <i class="ri-edit-line"></i>
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    @click.stop="(e) => deleteProfessor(professor, e)"
+                                                    class="text-red-500 hover:text-red-700"
+                                                >
+                                                    <i class="ri-delete-bin-line"></i>
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    <!-- Section des étudiants -->
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <Label>Étudiants</Label>
+                            <span class="text-sm text-gray-500">
+                                {{ formData.studentEmails.split(/[,\s]+/).filter(e => e).length }} étudiant(s)
+                            </span>
+                        </div>
+
+                        <!-- Textarea pour les emails -->
+                        <div class="space-y-2">
+                            <Label>Ajouter des emails (un par ligne ou séparés par des virgules)</Label>
+                            <textarea
+                                v-model="studentsEmails"
+                                rows="4"
+                                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                                placeholder="email1@example.com&#10;email2@example.com"
+                            ></textarea>
+                            <Button @click="addStudentsFromEmails" variant="outline" class="w-full">
+                                <i class="ri-user-add-line mr-2"></i>
+                                Ajouter les étudiants
+                            </Button>
+                        </div>
+
+                        <!-- Liste des étudiants -->
+                        <div class="max-h-[200px] overflow-y-auto border rounded-lg divide-y">
+                            <div v-for="email in formData.studentEmails.split(/[,\s]+/).filter(e => e)"
+                                 :key="email"
+                                 class="flex justify-between items-center p-2 hover:bg-gray-50"
+                            >
+                                <div class="text-sm">{{ email }}</div>
+                                <Button variant="ghost" size="sm" @click="removeStudent(email)">
+                                    <i class="ri-delete-bin-line text-red-500" />
+                                </Button>
+                            </div>
+                            <div v-if="!formData.studentEmails"
+                                 class="p-4 text-center text-gray-500"
+                            >
+                                Aucun étudiant ajouté
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section upload image -->
+                    <div class="space-y-4">
+                        <Label>Image du module</Label>
+                        <div class="flex flex-col gap-4">
+                            <div class="flex items-center gap-4">
+                                <div class="relative aspect-video w-full max-w-[300px] rounded-lg overflow-hidden">
+                                    <img
+                                        :src="imagePreview || module.image_path || defaultImage"
+                                        class="w-full h-full object-cover"
+                                        alt="Preview"
+                                    />
+                                    <Button
+                                        variant="secondary"
+                                        class="absolute inset-0 w-full h-full bg-black/30 opacity-0 hover:opacity-100 transition-opacity"
+                                        @click.stop="$refs.imageInput.click()"
+                                    >
+                                        <i class="ri-image-edit-line mr-2"></i>
+                                        Changer l'image
+                                    </Button>
+                                    <input
+                                        ref="imageInput"
+                                        type="file"
+                                        accept="image/*"
+                                        class="hidden"
+                                        @change="handleImageUpload"
+                                        @click.stop
+                                    />
+                                </div>
+                                <div class="flex-1">
+                                    <p class="text-sm text-gray-500">
+                                        Cliquez sur l'image pour la modifier.
+                                        <br>
+                                        Formats acceptés : JPG, PNG. Max 2MB.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer fixe -->
+            <div class="flex-none bg-white border-t">
+                <div class="p-6 flex justify-end gap-3">
+                    <Button variant="outline" @click="showDialog = false">
+                        Annuler
+                    </Button>
+                    <Button @click="saveChanges" :disabled="isLoading"
+                        class="bg-black text-white hover:bg-gray-800 disabled:opacity-50">
+                        {{ isLoading ? 'Enregistrement...' : 'Enregistrer' }}
+                    </Button>
+                </div>
+            </div>
+        </DialogContent>
+    </Dialog>
+
     <!-- Dialog pour nouveau professeur -->
-    <Dialog :open="showNewProfessorDialog" @close="showNewProfessorDialog = false">
-        <DialogContent>
+    <Dialog :open="showNewProfessorDialog" @update:open="showNewProfessorDialog = $event">
+        <DialogContent :aria-describedby="DIALOG_IDS.NEW_PROFESSOR">
             <DialogHeader>
                 <DialogTitle>Nouveau professeur</DialogTitle>
-                <DialogDescription>
+                <DialogDescription :id="DIALOG_IDS.NEW_PROFESSOR">
                     Ajouter un nouveau professeur à la liste
                 </DialogDescription>
             </DialogHeader>
@@ -339,4 +579,68 @@ const createProfessor = async () => {
             </DialogFooter>
         </DialogContent>
     </Dialog>
+
+    <!-- Dialog pour modifier professeur -->
+    <Dialog :open="showEditProfessorDialog" @update:open="showEditProfessorDialog = $event">
+        <DialogContent
+            class="sm:max-w-[425px] !z-[100]"
+            :aria-describedby="DIALOG_IDS.EDIT_PROFESSOR"
+        >
+            <DialogHeader>
+                <DialogTitle>Modifier le professeur</DialogTitle>
+                <DialogDescription :id="DIALOG_IDS.EDIT_PROFESSOR">
+                    Modifiez les informations du professeur.
+                </DialogDescription>
+            </DialogHeader>
+            <div class="space-y-4">
+                <div class="space-y-2">
+                    <Label for="editProfName">Nom du professeur</Label>
+                    <Input id="editProfName" v-model="editingProfessor.name" placeholder="Nom complet" />
+                </div>
+                <div class="space-y-2">
+                    <Label for="editProfEmail">Email</Label>
+                    <Input id="editProfEmail" v-model="editingProfessor.email" type="email" placeholder="Email" />
+                </div>
+            </div>
+            <DialogFooter>
+                <Button variant="outline" @click="showEditProfessorDialog = false">
+                    Annuler
+                </Button>
+                <Button @click="updateProfessor" :disabled="isEditingProfessor">
+                    {{ isEditingProfessor ? 'Modification...' : 'Modifier' }}
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
 </template>
+
+<style scoped>
+.scale-98 {
+    transform: scale(0.98);
+}
+
+.card-transition-enter-active,
+.card-transition-leave-active {
+    transition: all 0.3s ease;
+}
+
+.card-transition-enter-from,
+.card-transition-leave-to {
+    opacity: 0;
+    transform: scale(0.95);
+}
+
+/* Ajouter ces nouvelles règles */
+.DialogOverlay {
+    z-index: 99 !important;
+}
+
+.DialogContent {
+    z-index: 100 !important;
+}
+
+/* Assurer que le select reste en dessous */
+.SelectContent {
+    z-index: 50 !important;
+}
+</style>
