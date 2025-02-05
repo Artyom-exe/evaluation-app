@@ -5,6 +5,9 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\FormController;
 use App\Http\Controllers\QuestionTypeController;
+use App\Http\Controllers\StudentController;
+use App\Http\Controllers\TestMailController;
+
 
 
 Route::get('/', function () {
@@ -15,6 +18,10 @@ Route::get('/', function () {
         'phpVersion' => PHP_VERSION,
     ]);
 });
+
+// Routes publiques pour le formulaire (hors middleware)
+Route::get('/forms/{form}/submit', [FormController::class, 'showSubmissionForm'])->name('forms.submit');
+Route::post('/forms/{form}/submit', [FormController::class, 'storeSubmission'])->name('forms.process');
 
 Route::middleware([
     'auth:sanctum',
@@ -27,4 +34,13 @@ Route::middleware([
 
     Route::resource('forms', FormController::class);
     Route::post('/forms/{form}/duplicate', [FormController::class, 'duplicate'])->name('forms.duplicate');
+
+    // Route pour afficher la vue d'assignation d'étudiant
+    Route::get('/assign-student', [StudentController::class, 'showAssignStudentPage'])->name('students.assign');
+
+    // Route pour effectuer l'assignation de l'étudiant au module
+    Route::post('/assign-student', [StudentController::class, 'assignStudentToModule']);
+
+    // Route pour afficher les résultats du formulaire
+    Route::get('/forms/{form}/results', [FormController::class, 'showResults'])->name('forms.results');
 });

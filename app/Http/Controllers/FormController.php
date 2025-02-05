@@ -3,12 +3,16 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\FormSubmissionMail;
 use App\Models\Form;
 use App\Models\Module;
 use App\Models\Year;
 use App\Models\QuestionType;
 use App\Models\FormQuestion;
 use App\Models\Choice;
+use App\Models\Student;
+use App\Models\Response; // Ajout de l'import manquant
 use Inertia\Inertia;
 
 class FormController extends Controller
@@ -42,14 +46,13 @@ class FormController extends Controller
     public function store(Request $request)
     {
         try {
-            // Log complet des données reçues
             \Log::info('Données reçues:', $request->all());
 
             $validated = $request->validate([
                 'title' => 'required|string|max:255',
                 'module_id' => 'required|exists:modules,id',
                 'questions' => 'required|array|min:1',
-                'questions.*.type' => 'required|string',  // Suppression de la validation exists
+                'questions.*.type' => 'required|string',
                 'questions.*.label' => 'required|string',
                 'questions.*.options' => 'nullable|array'
             ]);
@@ -63,22 +66,18 @@ class FormController extends Controller
                 'statut' => 'open'
             ]);
 
-            // Log après création du formulaire
             \Log::info('Formulaire créé:', ['form' => $form->toArray()]);
 
-            // Pour chaque question
+            // Ajouter les questions
             foreach ($validated['questions'] as $questionData) {
-                // Log de chaque question
                 \Log::info('Traitement question:', $questionData);
 
-                // Recherche du type de question
                 $questionType = QuestionType::where('type', $questionData['type'])->first();
 
                 if (!$questionType) {
                     throw new \Exception("Type de question non trouvé: " . $questionData['type']);
                 }
 
-                // Créer la question
                 $question = new FormQuestion([
                     'label' => $questionData['label'],
                     'questions_types_id' => $questionType->id
@@ -86,7 +85,6 @@ class FormController extends Controller
 
                 $form->questions()->save($question);
 
-                // Pour les questions avec options
                 if (!empty($questionData['options'])) {
                     foreach ($questionData['options'] as $optionText) {
                         if (!empty($optionText)) {
@@ -97,6 +95,10 @@ class FormController extends Controller
             }
 
             \DB::commit();
+
+            // Envoyer le formulaire aux étudiants inscrits au module
+            $this->sendFormToStudents($form);
+
             return redirect()->route('forms.index');
         } catch (\Exception $e) {
             \DB::rollBack();
@@ -113,6 +115,44 @@ class FormController extends Controller
         }
     }
 
+
+    public function sendFormToStudents(Form $form)
+    {
+        $students = Student::whereHas('modules', function ($query) use ($form) {
+            $query->where('module_id', $form->module_id);
+        })->get();
+
+        foreach ($students as $student) {
+            Mail::to($student->email)->send(new FormSubmissionMail($form));
+        }
+    }
+
+    public function showSubmissionForm(Form $form)
+    {
+        return view('forms.submit', [
+            'form' => $form
+        ]);
+    }
+
+    public function storeSubmission(Request $request, Form $form)
+    {
+        $validated = $request->validate([
+            'responses.*' => 'required'
+        ]);
+
+        // ID test pour simuler un étudiant
+        $testStudentId = 1;
+
+        foreach ($request->responses as $questionId => $answer) {
+            Response::create([
+                'form_question_id' => $questionId,
+                'student_id' => $testStudentId, // ID fixe pour le test
+                'answers' => $answer // pas besoin de json_encode ici
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Merci pour votre réponse !');
+    }
 
     /**
      * Display the specified resource.
@@ -256,5 +296,18 @@ class FormController extends Controller
             ]);
             return back()->with('error', 'Erreur lors de la duplication: ' . $e->getMessage());
         }
+    }
+
+    public function showResults(Form $form)
+    {
+        $responses = Response::with('form_question')
+            ->whereIn('form_question_id', $form->questions->pluck('id'))
+            ->get()
+            ->groupBy('student_id');
+
+        return Inertia::render('Forms/Results', [
+            'form' => $form->load('questions'),
+            'responses' => $responses
+        ]);
     }
 }
