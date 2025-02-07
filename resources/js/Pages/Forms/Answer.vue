@@ -28,9 +28,8 @@ const getQuestionType = (question) => {
 // Initialiser les réponses selon le type de question
 onMounted(() => {
   props.form.questions.forEach(question => {
-    const type = getQuestionType(question);
-    if (type === 'checkbox') {
-      answers.value[question.id] = []; // Array pour choix multiples
+    if (question.question_type?.type === 'checkbox') {
+      answers.value[question.id] = []; // Initialiser avec un tableau vide pour checkbox
     } else {
       answers.value[question.id] = ''; // String pour les autres types
     }
@@ -39,6 +38,10 @@ onMounted(() => {
 
 const submitForm = () => {
   processing.value = true;
+
+  // Log pour déboguer
+  console.log('Réponses avant envoi:', answers.value);
+
   useForm({
     answers: answers.value
   }).post(route('forms.submit-answer', props.token), {
@@ -106,10 +109,12 @@ const submitForm = () => {
                 <div v-else-if="getQuestionType(question) === 'checkbox' && question.choices" class="mt-4">
                   <div v-for="choice in question.choices" :key="choice.id"
                        class="flex items-center space-x-2 mb-2">
-                    <Checkbox
+                    <input
+                      type="checkbox"
                       :id="'choice_' + choice.id"
                       :value="choice.text"
                       v-model="answers[question.id]"
+                      class="rounded border-gray-300 text-primary focus:ring-primary"
                     />
                     <Label :for="'choice_' + choice.id">{{ choice.text }}</Label>
                   </div>

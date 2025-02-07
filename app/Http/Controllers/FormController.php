@@ -355,25 +355,45 @@ class FormController extends Controller
                 'answers' => 'required|array'
             ]);
 
-            // Sauvegarde des réponses pour chaque question
+            \Log::info('Réponses reçues:', $validated['answers']);
+
             foreach ($validated['answers'] as $questionId => $answer) {
+                $formQuestion = FormQuestion::with('questionType')->find($questionId);
+
+                // Pour les questions de type checkbox
+                if ($formQuestion->questionType->type === 'checkbox') {
+                    // S'assurer que nous avons un tableau non vide
+                    if (!is_array($answer)) {
+                        $answer = [$answer];
+                    }
+
+                    // Filtrer les valeurs vides
+                    $answer = array_filter($answer);
+
+                    // Ne pas enregistrer si le tableau est vide
+                    if (empty($answer)) {
+                        continue;
+                    }
+                }
+
                 Response::create([
                     'form_question_id' => $questionId,
                     'student_id' => $accessToken->student_id,
                     'answers' => ['value' => $answer]
                 ]);
+
+                \Log::info('Réponse sauvegardée:', [
+                    'question_id' => $questionId,
+                    'type' => $formQuestion->questionType->type,
+                    'answer' => $answer
+                ]);
             }
 
-            // Marquer le token comme utilisé
             $accessToken->update(['used' => true]);
-
             return redirect()->route('forms.thankyou');
         } catch (\Exception $e) {
-            \Log::error('Erreur soumission réponse:', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            return back()->withErrors(['error' => 'Erreur lors de la soumission du formulaire']);
+            \Log::error('Erreur soumission:', $e->getMessage());
+            return back()->withErrors(['error' => 'Erreur lors de la soumission']);
         }
     }
 
@@ -417,14 +437,23 @@ class FormController extends Controller
         // Formater les données pour la vue
         $formattedResponses = $form->questions->map(function ($question) use ($responsesByQuestion) {
             $questionResponses = $responsesByQuestion->get($question->id, collect());
+            $type = $question->questionType->type;
 
             return [
                 'question_id' => $question->id,
                 'question' => $question->label,
-                'type' => $question->questionType->type,
+                'type' => $type,
                 'responses' => $questionResponses->map(function ($response) {
+                    // Récupérer la valeur brute de la réponse
+                    $value = $response->answers['value'];
+
+                    // Si la valeur est une chaîne JSON, la décoder
+                    if (is_string($value) && json_validate($value)) {
+                        $value = json_decode($value, true);
+                    }
+
                     return [
-                        'value' => $response->answers['value'],
+                        'value' => $value,
                         'student' => $response->student ? [
                             'name' => $response->student->name,
                             'email' => $response->student->email
