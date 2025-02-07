@@ -64,7 +64,7 @@ import { Textarea } from '@/Components/ui/textarea'
 import { Loader2 } from 'lucide-vue-next'
 import StudentLayout from '@/Layouts/StudentLayout.vue'
 
-defineProps({
+const props = defineProps({
   form: Object,
   token: String
 })
@@ -76,12 +76,15 @@ const submitForm = () => {
   processing.value = true
   useForm({
     answers: answers.value
-  }).post(route('forms.submit-answer', props.token), {
+  }).post(route('forms.submit-answer', props.token), {  // Utilisez props.token ici
     onSuccess: () => {
       processing.value = false
+      // Rediriger vers la page de remerciement
+      window.location.href = route('forms.thankyou')
     },
     onError: () => {
       processing.value = false
+      alert('Une erreur est survenue lors de l\'envoi des réponses')
     }
   })
 }
