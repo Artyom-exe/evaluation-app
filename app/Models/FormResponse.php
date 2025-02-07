@@ -5,12 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Response extends Model
+class FormResponse extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'form_question_id',
+        'form_id',
         'student_id',
         'answers'
     ];
@@ -19,9 +19,9 @@ class Response extends Model
         'answers' => 'array'
     ];
 
-    public function formQuestion()
+    public function form()
     {
-        return $this->belongsTo(FormQuestion::class);
+        return $this->belongsTo(Form::class);
     }
 
     public function student()

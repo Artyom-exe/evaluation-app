@@ -42,6 +42,9 @@ Route::middleware([
     Route::resource('forms', FormController::class);
     Route::post('/forms/{form}/duplicate', [FormController::class, 'duplicate'])->name('forms.duplicate');
 
+    // Ajouter cette nouvelle route pour les résultats
+    Route::get('/forms/{form}/results', [FormController::class, 'results'])->name('forms.results');
+
     // Routes pour l'envoi et la réponse aux formulaires
     Route::post('/forms/{form}/send-access', [FormController::class, 'sendAccess'])
         ->name('forms.send-access')
