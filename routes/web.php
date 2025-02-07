@@ -13,6 +13,23 @@ Route::get('/', function () {
     return redirect()->route('forms.index');
 });
 
+// Routes publiques pour les réponses aux formulaires
+Route::get('/forms/answer/{token}', [FormController::class, 'answer'])
+    ->name('forms.answer')
+    ->middleware('guest'); // Seulement pour les invités
+
+Route::post('/forms/submit-answer/{token}', [FormController::class, 'submitAnswer'])
+    ->name('forms.submit-answer')
+    ->middleware('guest');
+
+Route::get('/forms/thankyou', function () {
+    return Inertia::render('Forms/ThankYou');
+})->name('forms.thankyou');
+
+Route::get('/forms/error', function () {
+    return Inertia::render('Forms/Error');
+})->name('forms.error');
+
 Route::middleware([
     'auth:sanctum',
     config('jetstream.auth_session'),
@@ -24,6 +41,11 @@ Route::middleware([
 
     Route::resource('forms', FormController::class);
     Route::post('/forms/{form}/duplicate', [FormController::class, 'duplicate'])->name('forms.duplicate');
+
+    // Routes pour l'envoi et la réponse aux formulaires
+    Route::post('/forms/{form}/send-access', [FormController::class, 'sendAccess'])
+        ->name('forms.send-access')
+        ->middleware(['auth']);
 
     // Module routes
     Route::prefix('modules')->name('modules.')->group(function () {
