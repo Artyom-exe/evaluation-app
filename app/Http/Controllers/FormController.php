@@ -379,18 +379,44 @@ class FormController extends Controller
 
     public function results(Form $form)
     {
-        // Charger le formulaire avec ses relations
-        $form->load(['module.professor', 'module.year', 'questions.questionType']);
+        \Log::info('Début de la méthode results', ['form_id' => $form->id]);
 
-        // Récupérer toutes les réponses pour ce formulaire
+        // Charger le module avec ses étudiants directement
+        $form->load([
+            'module.professor',
+            'module.year',
+            'module.students', // Chargement explicite des étudiants
+            'questions.questionType',
+            'questions.choices' // Ajout des choix pour les questions à choix multiples
+        ]);
+
+        \Log::info('Module chargé', [
+            'module_id' => $form->module->id,
+            'students_count' => $form->module->students->count()
+        ]);
+
+        // Récupérer toutes les réponses avec les étudiants
         $responses = Response::with(['student'])
             ->whereIn('form_question_id', $form->questions->pluck('id'))
-            ->get()
-            ->groupBy('form_question_id');
+            ->get();
+
+        // Compter le nombre d'étudiants uniques ayant répondu
+        $uniqueStudentsCount = $responses->pluck('student_id')->unique()->count();
+
+        // Nombre total d'étudiants dans le module
+        $totalStudents = $form->module->students->count();
+
+        \Log::info('Statistiques', [
+            'total_students' => $totalStudents,
+            'unique_respondents' => $uniqueStudentsCount
+        ]);
+
+        // Grouper les réponses par question
+        $responsesByQuestion = $responses->groupBy('form_question_id');
 
         // Formater les données pour la vue
-        $formattedResponses = $form->questions->map(function ($question) use ($responses) {
-            $questionResponses = $responses->get($question->id, collect());
+        $formattedResponses = $form->questions->map(function ($question) use ($responsesByQuestion) {
+            $questionResponses = $responsesByQuestion->get($question->id, collect());
 
             return [
                 'question_id' => $question->id,
@@ -410,7 +436,9 @@ class FormController extends Controller
 
         return Inertia::render('Forms/Results', [
             'form' => $form,
-            'responses' => $formattedResponses
+            'responses' => $formattedResponses,
+            'studentsCount' => $uniqueStudentsCount,
+            'totalStudents' => $totalStudents
         ]);
     }
 }

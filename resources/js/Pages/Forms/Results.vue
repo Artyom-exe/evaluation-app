@@ -15,7 +15,9 @@ import {
 
 const props = defineProps({
     form: Object,
-    responses: Array
+    responses: Array,
+    studentsCount: Number,
+    totalStudents: Number
 });
 
 // Calcul des statistiques pour chaque question
@@ -50,6 +52,21 @@ const stats = computed(() => {
         };
     });
 });
+
+// Calcul de la classe CSS pour le taux de participation
+const getParticipationClass = computed(() => {
+    if (!props.totalStudents) return 'text-gray-600';
+    const rate = (props.studentsCount / props.totalStudents) * 100;
+    if (rate >= 75) return 'text-green-600';
+    if (rate >= 50) return 'text-yellow-600';
+    return 'text-red-600';
+});
+
+// Calcul du taux de participation
+const participationRate = computed(() => {
+    if (!props.totalStudents) return 0;
+    return Math.round((props.studentsCount / props.totalStudents) * 100);
+});
 </script>
 
 <template>
@@ -64,9 +81,21 @@ const stats = computed(() => {
                             Professeur: {{ form.module.professor.name }}
                         </p>
                     </div>
-                    <Badge variant="secondary" class="h-fit">
-                        {{ responses.reduce((acc, q) => acc + q.responses.length, 0) }} réponses
-                    </Badge>
+                    <div class="flex flex-col items-end gap-2">
+                        <Badge variant="secondary" class="h-fit">
+                            {{ studentsCount }} étudiant{{ studentsCount > 1 ? 's' : '' }} ont répondu
+                        </Badge>
+                        <p class="text-sm text-muted-foreground">
+                            sur {{ totalStudents }} étudiant{{ totalStudents > 1 ? 's' : '' }} dans le module
+                            ({{ form.module.students?.length || 0 }} inscrits)
+                        </p>
+                        <p v-if="totalStudents > 0" class="text-sm" :class="getParticipationClass">
+                            Taux de participation : {{ participationRate }}%
+                        </p>
+                        <p v-else class="text-sm text-gray-500">
+                            Aucun étudiant inscrit dans le module
+                        </p>
+                    </div>
                 </CardHeader>
 
                 <CardContent>
