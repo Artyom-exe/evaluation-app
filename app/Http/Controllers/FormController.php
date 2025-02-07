@@ -11,6 +11,10 @@ use App\Models\FormQuestion;
 use App\Models\Choice;
 use Inertia\Inertia;
 use App\Models\Professor;
+use App\Mail\FormAccessEmail;
+use App\Models\FormAccessToken;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Mail;
 
 
 class FormController extends Controller
@@ -260,6 +264,110 @@ class FormController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
             return back()->with('error', 'Erreur lors de la duplication: ' . $e->getMessage());
+        }
+    }
+
+    public function sendAccess(Form $form)
+    {
+        try {
+            if (!$form->module) {
+                throw new \Exception('Module non trouvé pour ce formulaire');
+            }
+
+            $students = $form->module->students;
+
+            if ($students->isEmpty()) {
+                throw new \Exception('Aucun étudiant trouvé dans ce module');
+            }
+
+            foreach ($students as $student) {
+                \Log::info('Envoi email à:', ['email' => $student->email]);
+
+                $token = FormAccessToken::create([
+                    'student_id' => $student->id,
+                    'form_id' => $form->id,
+                    'token' => Str::uuid(),
+                    'expires_at' => now()->addDays(7),
+                ]);
+
+                try {
+                    Mail::to($student->email)->send(new FormAccessEmail($token));
+                } catch (\Exception $mailError) {
+                    \Log::error('Erreur d\'envoi email:', ['error' => $mailError->getMessage()]);
+                }
+            }
+
+            return back()->with('success', 'Les emails ont été envoyés avec succès');
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de l\'envoi des emails:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'error' => 'Erreur lors de l\'envoi des emails: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function answer(string $token)
+    {
+        try {
+            $accessToken = FormAccessToken::where('token', $token)
+                ->with(['form.questions.choices', 'form.questions.questionType'])
+                ->where('used', false)
+                ->where('expires_at', '>', now())
+                ->firstOrFail();
+
+            $data = [
+                'form' => $accessToken->form,
+                'token' => $token
+            ];
+
+            \Log::info('Données du formulaire:', [
+                'form_id' => $accessToken->form->id,
+                'questions_count' => $accessToken->form->questions->count(),
+                'data' => $data
+            ]);
+
+            return Inertia::render('Forms/Answer', $data);
+        } catch (\Exception $e) {
+            \Log::error('Erreur de chargement:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->route('forms.error')
+                ->with('error', 'Ce lien n\'est plus valide ou a déjà été utilisé');
+        }
+    }
+
+    public function submitAnswer(Request $request, string $token)
+    {
+        $accessToken = FormAccessToken::where('token', $token)
+            ->where('used', false)
+            ->where('expires_at', '>', now())
+            ->firstOrFail();
+
+        try {
+            // Validation et sauvegarde des réponses
+            $validated = $request->validate([
+                'answers' => 'required|array'
+            ]);
+
+            // Marquer le token comme utilisé
+            $accessToken->update(['used' => true]);
+
+            return redirect()->route('forms.thankyou');
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de la soumission:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return back()->withErrors([
+                'error' => 'Erreur lors de la soumission du formulaire'
+            ]);
         }
     }
 }

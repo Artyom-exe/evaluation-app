@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch, onUnmounted, onMounted } from 'vue';
-import { Link, router } from '@inertiajs/vue3';  // Ajout de router ici
+import { Link, router, useForm } from '@inertiajs/vue3';  // Ajout de router et useForm ici
 import { Button } from '@/Components/ui/button';
 import { Input } from "@/Components/ui/input";
 import {
@@ -191,6 +191,21 @@ const createProfessor = async () => {
         isCreatingProfessor.value = false;
     }
 };
+
+const sendFormToStudents = (formId) => {
+    // Correction : créer une instance form avec useForm avant de l'utiliser
+    const form = useForm({});
+
+    form.post(route('forms.send-access', formId), {
+        preserveScroll: true,
+        onSuccess: () => {
+            showAlert('Emails envoyés avec succès', 'success');
+        },
+        onError: () => {
+            showAlert('Erreur lors de l\'envoi des emails', 'error');
+        }
+    });
+};
 </script>
 
 <template>
@@ -311,6 +326,13 @@ const createProfessor = async () => {
                                         @click="deleteForm(form.id)"
                                     >
                                         <i class="ri-delete-bin-line text-base text-red-500 hover:text-red-600"></i>
+                                    </Button>
+                                    <Button
+                                        @click="() => sendFormToStudents(form.id)"
+                                        variant="secondary"
+                                        size="sm"
+                                    >
+                                        Envoyer aux étudiants
                                     </Button>
                                 </div>
                             </td>
