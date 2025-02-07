@@ -355,25 +355,17 @@ class FormController extends Controller
                 'answers' => 'required|array'
             ]);
 
-            \Log::info('Réponses reçues:', $validated['answers']);
+            \Log::info('Réponses reçues:', ['answers' => $validated['answers']]);
 
             foreach ($validated['answers'] as $questionId => $answer) {
                 $formQuestion = FormQuestion::with('questionType')->find($questionId);
 
-                // Pour les questions de type checkbox
+                // Traitement spécial pour les checkbox
                 if ($formQuestion->questionType->type === 'checkbox') {
-                    // S'assurer que nous avons un tableau non vide
-                    if (!is_array($answer)) {
-                        $answer = [$answer];
-                    }
-
+                    // S'assurer que la réponse est un tableau
+                    $answer = is_array($answer) ? $answer : [$answer];
                     // Filtrer les valeurs vides
                     $answer = array_filter($answer);
-
-                    // Ne pas enregistrer si le tableau est vide
-                    if (empty($answer)) {
-                        continue;
-                    }
                 }
 
                 Response::create([
