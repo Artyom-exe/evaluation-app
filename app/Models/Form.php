@@ -11,7 +11,7 @@ class Form extends Model
     // Relation : Un formulaire appartient à un module
     public function module()
     {
-        return $this->belongsTo(Module::class);
+        return $this->belongsTo(Module::class)->with(['students']);
     }
 
     // Relation : Un formulaire a plusieurs questions
