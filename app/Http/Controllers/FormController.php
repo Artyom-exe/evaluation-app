@@ -15,6 +15,7 @@ use App\Mail\FormAccessEmail;
 use App\Models\FormAccessToken;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
+use App\Models\Response;
 
 
 class FormController extends Controller
@@ -344,30 +345,72 @@ class FormController extends Controller
 
     public function submitAnswer(Request $request, string $token)
     {
-        $accessToken = FormAccessToken::where('token', $token)
-            ->where('used', false)
-            ->where('expires_at', '>', now())
-            ->firstOrFail();
-
         try {
-            // Validation et sauvegarde des réponses
+            $accessToken = FormAccessToken::where('token', $token)
+                ->where('used', false)
+                ->where('expires_at', '>', now())
+                ->firstOrFail();
+
             $validated = $request->validate([
                 'answers' => 'required|array'
             ]);
+
+            // Sauvegarde des réponses pour chaque question
+            foreach ($validated['answers'] as $questionId => $answer) {
+                Response::create([
+                    'form_question_id' => $questionId,
+                    'student_id' => $accessToken->student_id,
+                    'answers' => ['value' => $answer]
+                ]);
+            }
 
             // Marquer le token comme utilisé
             $accessToken->update(['used' => true]);
 
             return redirect()->route('forms.thankyou');
         } catch (\Exception $e) {
-            \Log::error('Erreur lors de la soumission:', [
+            \Log::error('Erreur soumission réponse:', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-
-            return back()->withErrors([
-                'error' => 'Erreur lors de la soumission du formulaire'
-            ]);
+            return back()->withErrors(['error' => 'Erreur lors de la soumission du formulaire']);
         }
+    }
+
+    public function results(Form $form)
+    {
+        // Charger le formulaire avec ses relations
+        $form->load(['module.professor', 'module.year', 'questions.questionType']);
+
+        // Récupérer toutes les réponses pour ce formulaire
+        $responses = Response::with(['student'])
+            ->whereIn('form_question_id', $form->questions->pluck('id'))
+            ->get()
+            ->groupBy('form_question_id');
+
+        // Formater les données pour la vue
+        $formattedResponses = $form->questions->map(function ($question) use ($responses) {
+            $questionResponses = $responses->get($question->id, collect());
+
+            return [
+                'question_id' => $question->id,
+                'question' => $question->label,
+                'type' => $question->questionType->type,
+                'responses' => $questionResponses->map(function ($response) {
+                    return [
+                        'value' => $response->answers['value'],
+                        'student' => $response->student ? [
+                            'name' => $response->student->name,
+                            'email' => $response->student->email
+                        ] : null
+                    ];
+                })
+            ];
+        });
+
+        return Inertia::render('Forms/Results', [
+            'form' => $form,
+            'responses' => $formattedResponses
+        ]);
     }
 }
