@@ -20,36 +20,60 @@ const props = defineProps({
     totalStudents: Number
 });
 
-// Calcul des statistiques pour chaque question
+const parseValue = (value) => {
+    if (!value) return [];
+    if (Array.isArray(value)) return value;
+
+    try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [parsed];
+    } catch (e) {
+        return [value];
+    }
+};
+
+const formatCheckboxValue = (value) => {
+    if (!value) return [];
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') {
+        try {
+            const parsed = JSON.parse(value);
+            return Array.isArray(parsed) ? parsed : [parsed];
+        } catch (e) {
+            return [value];
+        }
+    }
+    return [value];
+};
+
 const stats = computed(() => {
     return props.responses.map(questionData => {
         const responses = questionData.responses;
+        const total = responses.length;
 
-        if (questionData.type === 'multiple_choice') {
-            // Pour les questions à choix multiples
+        // Pour les questions à choix (checkbox ou radio)
+        if (['checkbox', 'radio'].includes(questionData.type)) {
             const counts = {};
             responses.forEach(r => {
-                const value = r.value;
-                counts[value] = (counts[value || 0]) + 1; // Correction de la parenthèse
+                // Pour checkbox, r.value est déjà un tableau
+                if (Array.isArray(r.value)) {
+                    r.value.forEach(val => {
+                        counts[val] = (counts[val] || 0) + 1;
+                    });
+                } else {
+                    counts[r.value] = (counts[r.value] || 0) + 1;
+                }
             });
 
             return {
                 ...questionData,
-                stats: {
-                    counts,
-                    total: responses.length
-                }
+                stats: { counts, total },
+                responses
             };
         }
 
         // Pour les questions textuelles
-        return {
-            ...questionData,
-            responses: responses.map(r => ({
-                value: r.value,
-                student: r.student
-            }))
-        };
+        return questionData;
     });
 });
 
@@ -99,14 +123,48 @@ const participationRate = computed(() => {
                 </CardHeader>
 
                 <CardContent>
-                    <div class="space-y-8">
-                        <Card v-for="stat in stats" :key="stat.question_id" class="mt-4">
-                            <CardHeader>
-                                <CardTitle class="text-lg">{{ stat.question }}</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <!-- Affichage pour les questions à choix multiples -->
-                                <div v-if="stat.type === 'multiple_choice'" class="space-y-4">
+                    <div v-for="stat in stats" :key="stat.question_id" class="mb-8">
+                        <h3 class="text-lg font-semibold mb-4">{{ stat.question }}</h3>
+
+                        <!-- Affichage des réponses -->
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Étudiant</TableHead>
+                                        <TableHead>Réponse(s)</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    <TableRow v-for="(response, i) in stat.responses" :key="i">
+                                        <TableCell>{{ response.student?.name || 'Anonyme' }}</TableCell>
+                                        <TableCell>
+                                            <div class="flex flex-wrap gap-2">
+                                                <template v-if="stat.type === 'checkbox'">
+                                                    <Badge
+                                                        v-for="(value, index) in (Array.isArray(response.value) ? response.value : [])"
+                                                        :key="index"
+                                                        variant="secondary"
+                                                    >
+                                                        {{ value }}
+                                                    </Badge>
+                                                </template>
+                                                <template v-else>
+                                                    {{ response.value }}
+                                                </template>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                </TableBody>
+                            </Table>
+
+                            <!-- Statistiques pour les questions à choix -->
+                            <div v-if="['checkbox', 'radio'].includes(stat.type) &&
+                                       stat.stats?.counts &&
+                                       Object.keys(stat.stats.counts).length > 0"
+                                 class="mt-6">
+                                <h4 class="font-medium mb-4">Statistiques des réponses</h4>
+                                <div class="space-y-3">
                                     <div v-for="(count, answer) in stat.stats.counts"
                                          :key="answer"
                                          class="flex items-center justify-between">
@@ -121,33 +179,13 @@ const participationRate = computed(() => {
                                                 {{ Math.round((count / stat.stats.total) * 100) }}%
                                             </Badge>
                                             <span class="text-sm text-gray-500">
-                                                ({{ count }} réponses)
+                                                ({{ count }} sélection{{ count > 1 ? 's' : '' }})
                                             </span>
                                         </div>
                                     </div>
                                 </div>
-
-                                <!-- Affichage pour les questions textuelles -->
-                                <div v-else>
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>Étudiant</TableHead>
-                                                <TableHead>Réponse</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            <TableRow v-for="(response, i) in stat.responses" :key="i">
-                                                <TableCell>
-                                                    {{ response.student?.name || 'Anonyme' }}
-                                                </TableCell>
-                                                <TableCell>{{ response.value }}</TableCell>
-                                            </TableRow>
-                                        </TableBody>
-                                    </Table>
-                                </div>
-                            </CardContent>
-                        </Card>
+                            </div>
+                        </div>
                     </div>
                 </CardContent>
             </Card>
