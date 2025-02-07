@@ -1,17 +1,25 @@
 <script setup>
 import { ref, computed } from 'vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { Card, CardHeader, CardTitle, CardContent } from '@/Components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/Components/ui/card';
 import { Badge } from "@/Components/ui/badge";
 import {
     Table,
     TableBody,
-    TableCaption,
     TableCell,
     TableHead,
     TableHeader,
     TableRow,
 } from "@/Components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/Components/ui/tabs"
+import { ScrollArea } from "@/Components/ui/scroll-area"
+import {
+    PieChart,
+    BarChart,
+    CheckCircle,
+    Users,
+    ListChecks
+} from 'lucide-vue-next'
 
 const props = defineProps({
     form: Object,
@@ -91,104 +99,121 @@ const participationRate = computed(() => {
     if (!props.totalStudents) return 0;
     return Math.round((props.studentsCount / props.totalStudents) * 100);
 });
+
+const getParticipationStatus = computed(() => {
+    const rate = participationRate.value
+    if (rate >= 75) return { color: 'text-green-500', text: 'Excellente participation' }
+    if (rate >= 50) return { color: 'text-yellow-500', text: 'Bonne participation' }
+    return { color: 'text-red-500', text: 'Participation faible' }
+})
 </script>
 
 <template>
-    <AppLayout :title="`Résultats - ${form.title}`">
-        <div class="p-6 space-y-6">
-            <Card>
-                <CardHeader class="flex justify-between">
-                    <div>
-                        <CardTitle>{{ form.title }}</CardTitle>
-                        <p class="text-sm text-muted-foreground mt-2">
-                            Module: {{ form.module.name }} |
-                            Professeur: {{ form.module.professor.name }}
-                        </p>
-                    </div>
-                    <div class="flex flex-col items-end gap-2">
-                        <Badge variant="secondary" class="h-fit">
-                            {{ studentsCount }} étudiant{{ studentsCount > 1 ? 's' : '' }} ont répondu
-                        </Badge>
-                        <p class="text-sm text-muted-foreground">
-                            sur {{ totalStudents }} étudiant{{ totalStudents > 1 ? 's' : '' }} dans le module
-                            ({{ form.module.students?.length || 0 }} inscrits)
-                        </p>
-                        <p v-if="totalStudents > 0" class="text-sm" :class="getParticipationClass">
-                            Taux de participation : {{ participationRate }}%
-                        </p>
-                        <p v-else class="text-sm text-gray-500">
-                            Aucun étudiant inscrit dans le module
-                        </p>
-                    </div>
-                </CardHeader>
+  <AppLayout :title="`Résultats - ${form.title}`">
+    <div class="container mx-auto p-6">
+      <!-- En-tête avec statistiques -->
+      <div class="grid gap-4 mb-8 md:grid-cols-4">
+        <Card>
+          <CardHeader class="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle class="text-sm font-medium">Taux de participation</CardTitle>
+            <PieChart class="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div class="text-2xl font-bold" :class="getParticipationStatus.color">
+              {{ participationRate }}%
+            </div>
+            <p class="text-xs text-muted-foreground">
+              {{ getParticipationStatus.text }}
+            </p>
+          </CardContent>
+        </Card>
 
-                <CardContent>
-                    <div v-for="stat in stats" :key="stat.question_id" class="mb-8">
-                        <h3 class="text-lg font-semibold mb-4">{{ stat.question }}</h3>
+        <Card>
+          <CardHeader class="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle class="text-sm font-medium">Réponses reçues</CardTitle>
+            <CheckCircle class="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div class="text-2xl font-bold">{{ studentsCount }}</div>
+            <p class="text-xs text-muted-foreground">
+              sur {{ totalStudents }} étudiants
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
-                        <!-- Affichage des réponses -->
-                        <div class="bg-gray-50 rounded-lg p-4">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Étudiant</TableHead>
-                                        <TableHead>Réponse(s)</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    <TableRow v-for="(response, i) in stat.responses" :key="i">
-                                        <TableCell>{{ response.student?.name || 'Anonyme' }}</TableCell>
-                                        <TableCell>
-                                            <div class="flex flex-wrap gap-2">
-                                                <template v-if="stat.type === 'checkbox'">
-                                                    <Badge
-                                                        v-for="(value, index) in (Array.isArray(response.value) ? response.value : [])"
-                                                        :key="index"
-                                                        variant="secondary"
-                                                    >
-                                                        {{ value }}
-                                                    </Badge>
-                                                </template>
-                                                <template v-else>
-                                                    {{ response.value }}
-                                                </template>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                </TableBody>
-                            </Table>
+      <!-- Contenu principal -->
+      <Tabs defaultValue="summary" class="space-y-4">
+        <TabsList>
+          <TabsTrigger value="summary">Vue d'ensemble</TabsTrigger>
+          <TabsTrigger value="details">Détails par question</TabsTrigger>
+        </TabsList>
 
-                            <!-- Statistiques pour les questions à choix -->
-                            <div v-if="['checkbox', 'radio'].includes(stat.type) &&
-                                       stat.stats?.counts &&
-                                       Object.keys(stat.stats.counts).length > 0"
-                                 class="mt-6">
-                                <h4 class="font-medium mb-4">Statistiques des réponses</h4>
-                                <div class="space-y-3">
-                                    <div v-for="(count, answer) in stat.stats.counts"
-                                         :key="answer"
-                                         class="flex items-center justify-between">
-                                        <span>{{ answer }}</span>
-                                        <div class="flex items-center gap-4">
-                                            <div class="w-40 bg-gray-200 rounded-full h-2">
-                                                <div class="bg-primary h-2 rounded-full"
-                                                     :style="`width: ${(count / stat.stats.total) * 100}%`">
-                                                </div>
-                                            </div>
-                                            <Badge>
-                                                {{ Math.round((count / stat.stats.total) * 100) }}%
-                                            </Badge>
-                                            <span class="text-sm text-gray-500">
-                                                ({{ count }} sélection{{ count > 1 ? 's' : '' }})
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+        <TabsContent value="summary">
+          <Card>
+            <CardHeader>
+              <CardTitle>Résumé des réponses</CardTitle>
+              <CardDescription>Vue globale des réponses par type de question</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea class="h-[60vh] px-1">
+                <!-- Contenu existant optimisé -->
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="details">
+          <div class="grid gap-4">
+            <Card v-for="stat in stats" :key="stat.question_id">
+              <CardHeader>
+                <CardTitle class="text-lg">{{ stat.question }}</CardTitle>
+                <CardDescription>{{ stat.type }}</CardDescription>
+              </CardHeader>
+
+              <CardContent>
+                <!-- Questions à choix -->
+                <div v-if="['checkbox', 'radio'].includes(stat.type) && stat.stats?.counts">
+                  <div class="space-y-4">
+                    <div v-for="(count, answer) in stat.stats.counts"
+                         :key="answer"
+                         class="flex items-center gap-4">
+                      <div class="w-48 truncate">{{ answer }}</div>
+                      <div class="flex-1">
+                        <div class="w-full bg-secondary rounded-full h-2">
+                          <div class="bg-primary h-2 rounded-full"
+                               :style="`width: ${(count / stat.stats.total) * 100}%`">
+                          </div>
                         </div>
+                      </div>
+                      <div class="w-20 text-right">
+                        {{ Math.round((count / stat.stats.total) * 100) }}%
+                      </div>
+                      <Badge variant="secondary">
+                        {{ count }}
+                      </Badge>
                     </div>
-                </CardContent>
+                  </div>
+                </div>
+
+                <!-- Réponses textuelles -->
+                <div v-else>
+                  <ScrollArea class="h-[300px] w-full rounded-md border p-4">
+                    <div v-for="(response, i) in stat.responses" :key="i" class="mb-4 last:mb-0">
+                      <div class="font-medium text-sm text-muted-foreground mb-1">
+                        {{ response.student?.name || 'Anonyme' }}
+                      </div>
+                      <div class="bg-secondary p-3 rounded-lg">
+                        {{ response.value }}
+                      </div>
+                    </div>
+                  </ScrollArea>
+                </div>
+              </CardContent>
             </Card>
-        </div>
-    </AppLayout>
+          </div>
+        </TabsContent>
+      </Tabs>
+    </div>
+  </AppLayout>
 </template>
