@@ -315,31 +315,31 @@ class FormController extends Controller
     {
         try {
             $accessToken = FormAccessToken::where('token', $token)
-                ->with(['form.questions.choices', 'form.questions.questionType'])
+                ->with([
+                    'form.questions.choices',
+                    'form.questions.questionType' // Assurez-vous que cette relation est chargée
+                ])
                 ->where('used', false)
                 ->where('expires_at', '>', now())
                 ->firstOrFail();
 
-            $data = [
+            // Debug pour vérifier les données
+            \Log::info('Question Types:', [
+                'questions' => $accessToken->form->questions->map(function ($q) {
+                    return [
+                        'id' => $q->id,
+                        'type' => $q->questionType?->type
+                    ];
+                })
+            ]);
+
+            return Inertia::render('Forms/Answer', [
                 'form' => $accessToken->form,
                 'token' => $token
-            ];
-
-            \Log::info('Données du formulaire:', [
-                'form_id' => $accessToken->form->id,
-                'questions_count' => $accessToken->form->questions->count(),
-                'data' => $data
             ]);
-
-            return Inertia::render('Forms/Answer', $data);
         } catch (\Exception $e) {
-            \Log::error('Erreur de chargement:', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            return redirect()->route('forms.error')
-                ->with('error', 'Ce lien n\'est plus valide ou a déjà été utilisé');
+            \Log::error('Erreur:', ['message' => $e->getMessage()]);
+            return redirect()->route('forms.error');
         }
     }
 
