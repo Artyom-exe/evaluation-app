@@ -3,7 +3,6 @@
 namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -14,17 +13,17 @@ class FormAccessEmail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    private $formAccessToken;
+    public $token;
 
-    public function __construct(FormAccessToken $formAccessToken)
+    public function __construct(FormAccessToken $token)
     {
-        $this->formAccessToken = $formAccessToken;
+        $this->token = $token;
     }
 
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Accès à votre formulaire d\'évaluation',
+            subject: 'Invitation à évaluer votre module',
         );
     }
 
@@ -32,22 +31,6 @@ class FormAccessEmail extends Mailable
     {
         return new Content(
             view: 'emails.form-access',
-            with: [
-                'token' => $this->formAccessToken->token,
-                'studentName' => $this->formAccessToken->student->name,
-                'formTitle' => $this->formAccessToken->form->title,
-                'expiresAt' => $this->formAccessToken->expires_at->format('d/m/Y H:i')
-            ]
         );
-    }
-
-    /**
-     * Get the attachments for the message.
-     *
-     * @return array<int, \Illuminate\Mail\Mailables\Attachment>
-     */
-    public function attachments(): array
-    {
-        return [];
     }
 }
