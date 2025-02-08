@@ -238,15 +238,16 @@ const handleKeyDown = (event) => {
                 <div v-for="choice in form.questions[currentQuestionIndex].choices"
                      :key="choice.id"
                      class="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     :id="'choice_' + choice.id"
-                    :value="choice.text"
                     :checked="answers[form.questions[currentQuestionIndex].id]?.includes(choice.text)"
-                    @change="handleCheckboxChange(choice.text, form.questions[currentQuestionIndex].id)"
-                    class="rounded border-gray-300 text-primary focus:ring-primary"
+                    @update:checked="(checked) => {
+                      handleCheckboxChange(choice.text, form.questions[currentQuestionIndex].id)
+                    }"
                   />
-                  <Label :for="'choice_' + choice.id">{{ choice.text }}</Label>
+                  <Label :for="'choice_' + choice.id" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    {{ choice.text }}
+                  </Label>
                 </div>
               </div>
             </div>
