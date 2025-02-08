@@ -4,12 +4,22 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\Inscription;
+use App\Models\Student;
+use App\Models\Module;
 
 class InscriptionSeeder extends Seeder
 {
     public function run()
     {
-        Inscription::create(['student_id' => 1, 'module_id' => 1]);
-        Inscription::create(['student_id' => 2, 'module_id' => 2]);
+        $students = Student::all();
+        $modules = Module::all();
+
+        // Inscrire chaque étudiant à 3-5 modules aléatoires
+        foreach ($students as $student) {
+            $randomModules = $modules->random(rand(3, 5));
+            foreach ($randomModules as $module) {
+                $student->modules()->attach($module->id);
+            }
+        }
     }
 }

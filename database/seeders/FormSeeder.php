@@ -4,23 +4,24 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\Form;
-use Illuminate\Support\Facades\DB;
+use App\Models\Module;
 
 class FormSeeder extends Seeder
 {
     public function run()
     {
-        // Créer le formulaire
-        Form::create([
-            'title' => 'Evaluation Math',
-            'statut' => 'draft',
-            'module_id' => 1
-        ]);
+        $modules = Module::all();
+        $statuses = ['draft', 'pending', 'completed'];
 
-        Form::create([
-            'title' => 'Evaluation Physique',
-            'statut' => 'draft',
-            'module_id' => 2
-        ]);
+        foreach ($modules as $module) {
+            // Créer 2-3 formulaires par module
+            for ($i = 1; $i <= rand(2, 3); $i++) {
+                Form::create([
+                    'title' => "Evaluation {$module->name} - Partie {$i}",
+                    'statut' => $statuses[array_rand($statuses)],
+                    'module_id' => $module->id
+                ]);
+            }
+        }
     }
 }
