@@ -434,17 +434,19 @@ class FormController extends Controller
 
     public function results(Form $form)
     {
-        \Log::info('Début de la méthode results', ['form_id' => $form->id]);
-
+        // Chargement des relations
         $form->load([
-            'module.professor',
-            'module.year',
-            'module.students',
+            'module' => function ($query) {
+                $query->with(['professor', 'year', 'students']);
+            },
             'questions.questionType',
             'questions.choices'
         ]);
 
-        // Récupérer seulement les réponses non temporaires
+        // Chargement des modules pour le menu latéral
+        $modules = Module::with(['professor', 'year', 'students'])->get();
+
+        // Récupérer les réponses
         $responses = Response::with(['student'])
             ->where('is_temporary', false)
             ->whereIn('form_question_id', $form->questions->pluck('id'))
@@ -466,21 +468,8 @@ class FormController extends Controller
                 'question' => $question->label,
                 'type' => $type,
                 'responses' => $questionResponses->map(function ($response) {
-                    $rawValue = $response->answers['value'] ?? null;
-
-                    // Traiter la valeur en fonction de son type
-                    $value = $rawValue;
-                    if (is_string($rawValue)) {
-                        // Tenter de décoder si c'est du JSON
-                        try {
-                            $decoded = json_decode($rawValue, true);
-                            if (json_last_error() === JSON_ERROR_NONE) {
-                                $value = $decoded;
-                            }
-                        } catch (\Exception $e) {
-                            // Garder la valeur originale si ce n'est pas du JSON valide
-                        }
-                    }
+                    $answers = is_array($response->answers) ? $response->answers : json_decode($response->answers, true);
+                    $value = $answers['value'] ?? null;
 
                     return [
                         'value' => $value,
@@ -497,7 +486,8 @@ class FormController extends Controller
             'form' => $form,
             'responses' => $formattedResponses,
             'studentsCount' => $uniqueStudentsCount,
-            'totalStudents' => $totalStudents
+            'totalStudents' => $totalStudents,
+            'modules' => $modules
         ]);
     }
 }
