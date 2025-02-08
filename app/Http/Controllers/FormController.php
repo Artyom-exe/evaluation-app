@@ -223,11 +223,11 @@ class FormController extends Controller
      */
     public function destroy(Form $form)
     {
-        if ($form->statut !== 'draft') {
-            return back()->withErrors(['error' => 'Ce formulaire ne peut pas être supprimé']);
+        if ($form->statut === 'pending') {
+            return back()->withErrors(['error' => 'Ce formulaire ne peut pas être supprimé car il est en cours']);
         }
         $form->delete();
-        return redirect()->route('forms.index');
+        return redirect()->route('forms.index')->with('success', 'Formulaire supprimé avec succès');
     }
 
     public function duplicate(Form $form)
