@@ -32,6 +32,8 @@ const getStoredValue = (key, defaultValue) => {
 const searchQuery = ref(getStoredValue('search', ''));
 const selectedModule = ref(getStoredValue('module', 'all'));
 const selectedYear = ref(getStoredValue('year', 'all'));
+const selectedStatus = ref(getStoredValue('status', 'all'));
+const selectedProfessor = ref(getStoredValue('professor', 'all'));
 
 // Surveiller les changements et mettre à jour le localStorage
 watch(searchQuery, (newValue) => {
@@ -46,11 +48,21 @@ watch(selectedYear, (newValue) => {
     localStorage.setItem('forms_year', newValue);
 });
 
+watch(selectedStatus, (newValue) => {
+    localStorage.setItem('forms_status', newValue);
+});
+
+watch(selectedProfessor, (newValue) => {
+    localStorage.setItem('forms_professor', newValue);
+});
+
 // Nettoyage du localStorage quand le composant est démonté
 onUnmounted(() => {
     localStorage.removeItem('forms_search');
     localStorage.removeItem('forms_module');
     localStorage.removeItem('forms_year');
+    localStorage.removeItem('forms_status');
+    localStorage.removeItem('forms_professor');
 });
 
 const filteredForms = computed(() => {
@@ -68,8 +80,10 @@ const filteredForms = computed(() => {
         const matchesSearch = search === '' || searchInFields.some(field => field.includes(search));
         const matchesModule = selectedModule.value === 'all' || Number(selectedModule.value) === form.module.id;
         const matchesYear = selectedYear.value === 'all' || Number(selectedYear.value) === form.module.year.id;
+        const matchesStatus = selectedStatus.value === 'all' || form.statut === selectedStatus.value;
+        const matchesProfessor = selectedProfessor.value === 'all' || Number(selectedProfessor.value) === form.module.professor.id;
 
-        return matchesSearch && matchesModule && matchesYear;
+        return matchesSearch && matchesModule && matchesYear && matchesStatus && matchesProfessor;
     });
 });
 
@@ -238,6 +252,13 @@ const sendFormToStudents = (formId) => {
 };
 
 const canModifyForm = (form) => form.statut === 'draft';
+
+const statuses = [
+    { value: 'all', label: 'Tous les statuts' },
+    { value: 'draft', label: 'Brouillon' },
+    { value: 'pending', label: 'En cours' },
+    { value: 'completed', label: 'Terminé' }
+];
 </script>
 
 <template>
@@ -296,6 +317,37 @@ const canModifyForm = (form) => form.statut === 'draft';
                             :value="year.id.toString()"
                         >
                             {{ year.name }}
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
+
+                <Select v-model="selectedStatus">
+                    <SelectTrigger class="w-[200px]">
+                        <SelectValue placeholder="Filtrer par statut" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem
+                            v-for="status in statuses"
+                            :key="status.value"
+                            :value="status.value"
+                        >
+                            {{ status.label }}
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
+
+                <Select v-model="selectedProfessor">
+                    <SelectTrigger class="w-[200px]">
+                        <SelectValue placeholder="Filtrer par professeur" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Tous les professeurs</SelectItem>
+                        <SelectItem
+                            v-for="professor in professors"
+                            :key="professor.id"
+                            :value="professor.id.toString()"
+                        >
+                            {{ professor.name }}
                         </SelectItem>
                     </SelectContent>
                 </Select>
