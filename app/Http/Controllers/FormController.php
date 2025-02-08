@@ -26,7 +26,9 @@ class FormController extends Controller
     public function index()
     {
         return Inertia::render('Forms/Index', [
-            'forms' => Form::with(['module.professor', 'module.year'])->get(),
+            'forms' => Form::with(['module.professor', 'module.year'])
+                ->orderBy('created_at', 'desc')
+                ->get(),
             'modules' => Module::with(['professor', 'year', 'students'])->get(), // Ajout de 'year' dans le with
             'years' => Year::all(),
             'professors' => Professor::all(),
