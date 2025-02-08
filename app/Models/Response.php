@@ -12,7 +12,8 @@ class Response extends Model
     protected $fillable = [
         'form_question_id',
         'student_id',
-        'answers'
+        'answers',
+        'is_temporary'
     ];
 
     protected $casts = [

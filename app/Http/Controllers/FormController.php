@@ -317,29 +317,61 @@ class FormController extends Controller
             $accessToken = FormAccessToken::where('token', $token)
                 ->with([
                     'form.questions.choices',
-                    'form.questions.questionType' // Assurez-vous que cette relation est chargée
+                    'form.questions.questionType'
                 ])
-                ->where('used', false)
                 ->where('expires_at', '>', now())
+                ->where('used', false)
                 ->firstOrFail();
 
-            // Debug pour vérifier les données
-            \Log::info('Question Types:', [
-                'questions' => $accessToken->form->questions->map(function ($q) {
-                    return [
-                        'id' => $q->id,
-                        'type' => $q->questionType?->type
-                    ];
-                })
-            ]);
+            // Récupérer les réponses temporaires existantes
+            $existingResponses = Response::where('student_id', $accessToken->student_id)
+                ->where('is_temporary', true)
+                ->whereIn('form_question_id', $accessToken->form->questions->pluck('id'))
+                ->get();
+
+            // Formater les réponses existantes
+            $savedAnswers = [];
+            foreach ($existingResponses as $response) {
+                $savedAnswers[$response->form_question_id] = $response->answers['value'];
+            }
 
             return Inertia::render('Forms/Answer', [
                 'form' => $accessToken->form,
-                'token' => $token
+                'token' => $token,
+                'savedAnswers' => $savedAnswers
             ]);
         } catch (\Exception $e) {
             \Log::error('Erreur:', ['message' => $e->getMessage()]);
             return redirect()->route('forms.error');
+        }
+    }
+
+    public function saveProgress(Request $request, string $token)
+    {
+        try {
+            $accessToken = FormAccessToken::where('token', $token)
+                ->where('expires_at', '>', now())
+                ->where('used', false)
+                ->firstOrFail();
+
+            $answers = $request->input('answers');
+
+            foreach ($answers as $questionId => $answer) {
+                Response::updateOrCreate(
+                    [
+                        'form_question_id' => $questionId,
+                        'student_id' => $accessToken->student_id,
+                        'is_temporary' => true
+                    ],
+                    [
+                        'answers' => ['value' => $answer]
+                    ]
+                );
+            }
+
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 403);
         }
     }
 
@@ -355,35 +387,30 @@ class FormController extends Controller
                 'answers' => 'required|array'
             ]);
 
-            \Log::info('Réponses reçues:', ['answers' => $validated['answers']]);
+            \DB::beginTransaction();
 
+            // Supprimer les réponses temporaires
+            Response::where('student_id', $accessToken->student_id)
+                ->where('is_temporary', true)
+                ->whereIn('form_question_id', array_keys($validated['answers']))
+                ->delete();
+
+            // Créer les réponses finales
             foreach ($validated['answers'] as $questionId => $answer) {
-                $formQuestion = FormQuestion::with('questionType')->find($questionId);
-
-                // Traitement spécial pour les checkbox
-                if ($formQuestion->questionType->type === 'checkbox') {
-                    // S'assurer que la réponse est un tableau
-                    $answer = is_array($answer) ? $answer : [$answer];
-                    // Filtrer les valeurs vides
-                    $answer = array_filter($answer);
-                }
-
                 Response::create([
                     'form_question_id' => $questionId,
                     'student_id' => $accessToken->student_id,
-                    'answers' => ['value' => $answer]
-                ]);
-
-                \Log::info('Réponse sauvegardée:', [
-                    'question_id' => $questionId,
-                    'type' => $formQuestion->questionType->type,
-                    'answer' => $answer
+                    'answers' => ['value' => $answer],
+                    'is_temporary' => false
                 ]);
             }
 
             $accessToken->update(['used' => true]);
+
+            \DB::commit();
             return redirect()->route('forms.thankyou');
         } catch (\Exception $e) {
+            \DB::rollBack();
             \Log::error('Erreur soumission:', $e->getMessage());
             return back()->withErrors(['error' => 'Erreur lors de la soumission']);
         }
@@ -393,35 +420,22 @@ class FormController extends Controller
     {
         \Log::info('Début de la méthode results', ['form_id' => $form->id]);
 
-        // Charger le module avec ses étudiants directement
         $form->load([
             'module.professor',
             'module.year',
-            'module.students', // Chargement explicite des étudiants
+            'module.students',
             'questions.questionType',
-            'questions.choices' // Ajout des choix pour les questions à choix multiples
+            'questions.choices'
         ]);
 
-        \Log::info('Module chargé', [
-            'module_id' => $form->module->id,
-            'students_count' => $form->module->students->count()
-        ]);
-
-        // Récupérer toutes les réponses avec les étudiants
+        // Récupérer seulement les réponses non temporaires
         $responses = Response::with(['student'])
+            ->where('is_temporary', false)
             ->whereIn('form_question_id', $form->questions->pluck('id'))
             ->get();
 
-        // Compter le nombre d'étudiants uniques ayant répondu
         $uniqueStudentsCount = $responses->pluck('student_id')->unique()->count();
-
-        // Nombre total d'étudiants dans le module
         $totalStudents = $form->module->students->count();
-
-        \Log::info('Statistiques', [
-            'total_students' => $totalStudents,
-            'unique_respondents' => $uniqueStudentsCount
-        ]);
 
         // Grouper les réponses par question
         $responsesByQuestion = $responses->groupBy('form_question_id');
@@ -436,12 +450,20 @@ class FormController extends Controller
                 'question' => $question->label,
                 'type' => $type,
                 'responses' => $questionResponses->map(function ($response) {
-                    // Récupérer la valeur brute de la réponse
-                    $value = $response->answers['value'];
+                    $rawValue = $response->answers['value'] ?? null;
 
-                    // Si la valeur est une chaîne JSON, la décoder
-                    if (is_string($value) && json_validate($value)) {
-                        $value = json_decode($value, true);
+                    // Traiter la valeur en fonction de son type
+                    $value = $rawValue;
+                    if (is_string($rawValue)) {
+                        // Tenter de décoder si c'est du JSON
+                        try {
+                            $decoded = json_decode($rawValue, true);
+                            if (json_last_error() === JSON_ERROR_NONE) {
+                                $value = $decoded;
+                            }
+                        } catch (\Exception $e) {
+                            // Garder la valeur originale si ce n'est pas du JSON valide
+                        }
                     }
 
                     return [
