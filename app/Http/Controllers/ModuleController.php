@@ -48,7 +48,13 @@ class ModuleController extends Controller
 
         try {
             \DB::beginTransaction();
-            $validated['image_path'] = $this->handleImage($request) ?? self::DEFAULT_IMAGE;
+
+            // Gérer l'image
+            if ($request->hasFile('image')) {
+                $validated['image_path'] = '/storage/' . $request->file('image')->store('modules', 'public');
+            }
+            // Pas besoin d'else car le modèle gèrera l'image par défaut
+
             $module = Module::create($validated);
             $students = json_decode($request->students, true);
             $this->handleStudents($module, $students);
