@@ -144,6 +144,10 @@ const canDuplicate = (form) => {
   return form.statut === 'draft' || form.statut === 'completed';
 };
 
+const canDelete = (form) => {
+    return form.statut === 'draft' || form.statut === 'completed';
+};
+
 const showNewModuleDialog = ref(false);
 const isCreatingModule = ref(false);
 const newModule = ref({
@@ -350,7 +354,7 @@ const canModifyForm = (form) => form.statut === 'draft';
                                     </Button>
 
                                     <Button
-                                        v-if="form.statut === 'draft'"
+                                        v-if="canDelete(form)"
                                         variant="outline"
                                         size="sm"
                                         :class="getButtonClass('delete')"
