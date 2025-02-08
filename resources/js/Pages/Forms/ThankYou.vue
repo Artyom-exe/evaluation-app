@@ -9,16 +9,10 @@
           Vos réponses ont été enregistrées avec succès.
         </p>
       </CardContent>
-      <CardFooter class="flex justify-center">
-        <Button variant="outline" @click="$inertia.visit(route('forms.index'))">
-          Retour à l'accueil
-        </Button>
-      </CardFooter>
     </Card>
   </div>
 </template>
 
 <script setup>
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/Components/ui/card'
-import { Button } from '@/Components/ui/button'
+import { Card, CardHeader, CardTitle, CardContent } from '@/Components/ui/card'
 </script>
