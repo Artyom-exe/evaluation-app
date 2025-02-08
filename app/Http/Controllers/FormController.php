@@ -320,16 +320,16 @@ class FormController extends Controller
                     'form.questions.questionType'
                 ])
                 ->where('expires_at', '>', now())
-                ->where('used', false)
+                ->where('used', false) // On garde cette vérification ici
                 ->firstOrFail();
 
-            // Récupérer les réponses temporaires existantes
+            // Récupérer toutes les réponses existantes (temporaires ou non)
             $existingResponses = Response::where('student_id', $accessToken->student_id)
-                ->where('is_temporary', true)
                 ->whereIn('form_question_id', $accessToken->form->questions->pluck('id'))
+                ->where('is_temporary', true) // On ne récupère que les réponses temporaires
                 ->get();
 
-            // Formater les réponses existantes
+            // Récupérer les réponses temporaires existantes
             $savedAnswers = [];
             foreach ($existingResponses as $response) {
                 $savedAnswers[$response->form_question_id] = $response->answers['value'];
@@ -351,8 +351,12 @@ class FormController extends Controller
         try {
             $accessToken = FormAccessToken::where('token', $token)
                 ->where('expires_at', '>', now())
-                ->where('used', false)
-                ->firstOrFail();
+                ->firstOrFail(); // On retire la vérification 'used' ici
+
+            // Vérifier si le token n'a pas déjà été utilisé pour une soumission finale
+            if ($accessToken->used) {
+                return back()->withErrors(['error' => 'Ce formulaire a déjà été soumis']);
+            }
 
             $answers = $request->input('answers');
 
@@ -369,25 +373,31 @@ class FormController extends Controller
                 );
             }
 
-            return response()->json(['success' => true]);
+            return back();
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 403);
+            \Log::error('Erreur sauvegarde temporaire', ['error' => $e->getMessage()]); // Correction ici
+            return back()->withErrors(['error' => 'Erreur lors de la sauvegarde temporaire']);
         }
     }
 
     public function submitAnswer(Request $request, string $token)
     {
         try {
-            $accessToken = FormAccessToken::where('token', $token)
-                ->where('used', false)
+            \DB::beginTransaction();
+
+            $accessToken = FormAccessToken::lockForUpdate() // Verrouiller le token pour éviter les soumissions simultanées
+                ->where('token', $token)
                 ->where('expires_at', '>', now())
-                ->firstOrFail();
+                ->first();
+
+            if (!$accessToken || $accessToken->used) {
+                return redirect()->route('forms.error')
+                    ->with('error', 'Ce formulaire a déjà été soumis ou est invalide');
+            }
 
             $validated = $request->validate([
                 'answers' => 'required|array'
             ]);
-
-            \DB::beginTransaction();
 
             // Supprimer les réponses temporaires
             Response::where('student_id', $accessToken->student_id)
@@ -405,13 +415,17 @@ class FormController extends Controller
                 ]);
             }
 
-            $accessToken->update(['used' => true]);
+            // Marquer le token comme utilisé
+            $accessToken->used = true;
+            $accessToken->save();
 
             \DB::commit();
-            return redirect()->route('forms.thankyou');
+
+            // Retourner une réponse Inertia plutôt qu'une redirection standard
+            return Inertia::location(route('forms.thankyou'));
         } catch (\Exception $e) {
             \DB::rollBack();
-            \Log::error('Erreur soumission:', $e->getMessage());
+            \Log::error('Erreur soumission', ['error' => $e->getMessage()]);
             return back()->withErrors(['error' => 'Erreur lors de la soumission']);
         }
     }

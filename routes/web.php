@@ -22,6 +22,11 @@ Route::post('/forms/submit-answer/{token}', [FormController::class, 'submitAnswe
     ->name('forms.submit-answer')
     ->middleware('guest');
 
+// Ajouter cette nouvelle route pour la sauvegarde de la progression
+Route::post('/forms/{token}/save-progress', [FormController::class, 'saveProgress'])
+    ->name('forms.save-progress')
+    ->middleware('guest');
+
 Route::get('/forms/thankyou', function () {
     return Inertia::render('Forms/ThankYou');
 })->name('forms.thankyou');

@@ -12,9 +12,19 @@ import { Progress } from '@/Components/ui/progress'
 import StudentLayout from '@/Layouts/StudentLayout.vue'
 import { Loader2 } from 'lucide-vue-next'
 
+// Ajouter la fonction debounce au début du fichier
+function debounce(fn, delay) {
+  let timeoutId;
+  return function (...args) {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+
 const props = defineProps({
   form: Object,
-  token: String
+  token: String,
+  savedAnswers: Object
 })
 
 const answers = ref({})
@@ -33,14 +43,60 @@ const calculateProgress = () => {
   progress.value = ((currentQuestionIndex.value + 1) / props.form.questions.length) * 100
 }
 
-onMounted(() => {
-  props.form.questions.forEach(question => {
-    if (getQuestionType(question) === 'checkbox') {
-      answers.value[question.id] = []
-    } else {
-      answers.value[question.id] = ''
+// Fonction pour sauvegarder dans le localStorage
+const saveToLocalStorage = () => {
+  const storageKey = `form_answers_${props.token}`
+  localStorage.setItem(storageKey, JSON.stringify({
+    answers: answers.value,
+    lastQuestionIndex: currentQuestionIndex.value,
+    timestamp: new Date().getTime()
+  }))
+}
+
+// Fonction pour charger depuis le localStorage
+const loadFromLocalStorage = () => {
+  const storageKey = `form_answers_${props.token}`
+  const saved = localStorage.getItem(storageKey)
+  if (saved) {
+    try {
+      const { answers: savedAnswers, lastQuestionIndex, timestamp } = JSON.parse(saved)
+      // Vérifier si les données ont moins de 24h
+      const now = new Date().getTime()
+      const isValid = (now - timestamp) < 24 * 60 * 60 * 1000
+
+      if (isValid) {
+        answers.value = savedAnswers
+        currentQuestionIndex.value = lastQuestionIndex
+        return true
+      }
+    } catch (e) {
+      console.error('Erreur lors du chargement des réponses:', e)
     }
-  })
+  }
+  return false
+}
+
+// Nettoyer le localStorage une fois le formulaire soumis
+const clearLocalStorage = () => {
+  const storageKey = `form_answers_${props.token}`
+  localStorage.removeItem(storageKey)
+}
+
+onMounted(() => {
+  // D'abord essayer de charger depuis le localStorage
+  const loadedFromStorage = loadFromLocalStorage()
+
+  if (!loadedFromStorage) {
+    // Si rien dans le localStorage, initialiser avec les réponses sauvegardées du serveur ou valeurs par défaut
+    props.form.questions.forEach(question => {
+      if (props.savedAnswers && props.savedAnswers[question.id] !== undefined) {
+        answers.value[question.id] = props.savedAnswers[question.id]
+      } else {
+        answers.value[question.id] = getQuestionType(question) === 'checkbox' ? [] : ''
+      }
+    })
+  }
+
   calculateProgress()
 })
 
@@ -139,24 +195,27 @@ const prepareAnswersForSubmission = () => {
   return prepared;
 }
 
+// Modifier la fonction submitForm pour nettoyer le localStorage
 const submitForm = () => {
   const currentQuestion = props.form.questions[currentQuestionIndex.value];
   const canSubmit = hasAnswer(currentQuestion.id);
-  console.log('Tentative de soumission:', {
-    currentQuestion,
-    answers: prepareAnswersForSubmission(),
-    canSubmit
-  });
 
   if (!canSubmit) return;
 
   processing.value = true;
   useForm({ answers: prepareAnswersForSubmission() })
     .post(route('forms.submit-answer', props.token), {
-      onSuccess: () => window.location.href = route('forms.thankyou'),
-      onError: () => {
+      onSuccess: () => {
+        clearLocalStorage();
+        window.location.href = route('forms.thankyou');
+      },
+      onError: (errors) => {
         processing.value = false;
-        alert('Une erreur est survenue');
+        if (errors.error) {
+          alert(errors.error);
+        } else {
+          alert('Une erreur est survenue lors de la soumission');
+        }
       }
     });
 }
@@ -174,6 +233,28 @@ const handleKeyDown = (event) => {
     }
   }
 }
+
+// Mettre cette fonction avant qu'elle ne soit utilisée
+const autoSave = debounce(() => {
+  if (!props.token) return;
+
+  useForm({ answers: prepareAnswersForSubmission() })
+    .post(route('forms.save-progress', props.token), {
+      preserveScroll: true,
+      preserveState: true,
+      onError: () => {
+        console.error('Erreur lors de la sauvegarde automatique');
+      }
+    });
+}, 1000);
+
+// Modifier le watcher pour qu'il ne s'exécute que si la question existe
+watch([answers, currentQuestionIndex], () => {
+  if (props.form.questions[currentQuestionIndex.value]) {
+    saveToLocalStorage();
+    autoSave();
+  }
+}, { deep: true })
 </script>
 
 <template>
