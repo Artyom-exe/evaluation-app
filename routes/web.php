@@ -55,6 +55,10 @@ Route::middleware([
         ->name('forms.send-access')
         ->middleware(['auth']);
 
+    // Ajouter cette nouvelle route pour vérifier le statut du formulaire
+    Route::post('/forms/{form}/check-status', [FormController::class, 'checkFormStatus'])
+        ->name('forms.check-status');
+
     // Module routes
     Route::prefix('modules')->name('modules.')->group(function () {
         Route::post('/', [ModuleController::class, 'store'])->name('store');
