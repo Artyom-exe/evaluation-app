@@ -1,6 +1,6 @@
 <script setup>
 import StudentLayout from '@/Layouts/StudentLayout.vue'
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/Components/ui/card'
+import { Card, CardHeader, CardTitle, CardContent } from '@/Components/ui/card'
 import { Button } from '@/Components/ui/button'
 import { useForm } from '@inertiajs/vue3'
 
@@ -27,15 +27,6 @@ const form = useForm({})
             </p>
           </div>
         </CardContent>
-        <CardFooter class="flex justify-center">
-          <Button
-            variant="outline"
-            @click="() => window.close()"
-            class="mt-4"
-          >
-            Fermer cette page
-          </Button>
-        </CardFooter>
       </Card>
     </div>
   </StudentLayout>
