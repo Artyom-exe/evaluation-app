@@ -160,6 +160,20 @@ const submitForm = () => {
       }
     });
 }
+
+const handleKeyDown = (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault(); // Empêche la soumission du formulaire
+    const currentQuestion = props.form.questions[currentQuestionIndex.value];
+    if (hasAnswer(currentQuestion.id)) {
+      if (currentQuestionIndex.value < props.form.questions.length - 1) {
+        nextQuestion();
+      } else {
+        submitForm();
+      }
+    }
+  }
+}
 </script>
 
 <template>
@@ -187,6 +201,7 @@ const submitForm = () => {
                   v-model="answers[form.questions[currentQuestionIndex].id]"
                   class="w-full"
                   placeholder="Votre réponse..."
+                  @keydown="handleKeyDown"
                 />
               </div>
 
@@ -197,6 +212,7 @@ const submitForm = () => {
                   :rows="5"
                   class="w-full"
                   placeholder="Votre réponse..."
+                  @keydown="handleKeyDown"
                 />
               </div>
 
