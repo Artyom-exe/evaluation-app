@@ -271,6 +271,8 @@ class FormController extends Controller
     public function sendAccess(Form $form)
     {
         try {
+            $form->load('module'); // Assurez-vous que le module est chargé
+
             if (!$form->module) {
                 throw new \Exception('Module non trouvé pour ce formulaire');
             }

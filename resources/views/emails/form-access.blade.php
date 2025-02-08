@@ -68,12 +68,12 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1 class="title">Évaluation de Module</h1>
+            <h1 class="title">Évaluation du module {{ $token->form->module->name }}</h1>
         </div>
         <div class="description">
             <p>Bonjour,</p>
-            <p>Vous avez été invité(e) à participer à l'évaluation d'un de vos modules. Votre retour est important pour
-                nous aider à améliorer la qualité de l'enseignement.</p>
+            <p>Vous avez été invité(e) à participer à l'évaluation du module "{{ $token->form->module->name }}".
+                Votre retour est important pour nous aider à améliorer la qualité de l'enseignement.</p>
             <p>Pour accéder au formulaire d'évaluation, cliquez sur le bouton ci-dessous :</p>
         </div>
         <div style="text-align: center;">

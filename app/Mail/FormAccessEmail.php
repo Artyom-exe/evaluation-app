@@ -23,7 +23,7 @@ class FormAccessEmail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Invitation à évaluer votre module',
+            subject: "Invitation à évaluer le module : {$this->token->form->module->name}",
         );
     }
 
