@@ -68,29 +68,13 @@ const getParticipationStatus = computed(() => {
     return { color: 'text-red-500', text: 'Participation faible' };
 });
 
-// Vérifier le statut toutes les minutes si le formulaire est en cours
-const checkStatus = () => {
-    if (props.form.statut === 'pending') {
-        router.post(route('forms.check-status', props.form.id), {}, {
-            preserveScroll: true,
-            preserveState: true
-        });
-    }
-};
-
-let statusInterval;
-
+// Supprimons l'intervalle de vérification du statut
 onMounted(() => {
-    if (props.form.statut === 'pending') {
-        checkStatus();
-        statusInterval = setInterval(checkStatus, 60000); // Vérifier toutes les minutes
-    }
+    // Ne rien faire au montage
 });
 
 onUnmounted(() => {
-    if (statusInterval) {
-        clearInterval(statusInterval);
-    }
+    // Ne rien faire au démontage
 });
 </script>
 

@@ -420,6 +420,7 @@ const statuses = [
                                         size="sm"
                                         :class="getButtonClass('results')"
                                         asChild
+                                        v-if="form.statut === 'pending' || form.statut === 'completed'"
                                     >
                                         <Link :href="`/forms/${form.id}/results`">
                                             <i class="ri-bar-chart-line"></i>
