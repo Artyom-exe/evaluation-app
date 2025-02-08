@@ -247,8 +247,8 @@ const updateProfessor = async () => {
         <Banner />
 
         <div class="min-h-screen bg-gray-100">
-            <nav class="bg-white border-b border-gray-100">
-                <!-- Primary Navigation Menu -->
+            <!-- Ajout de sticky, top-0 et z-50 à la nav -->
+            <nav class="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100 shadow-sm">
                 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div class="flex justify-between h-16">
                         <div class="flex">
@@ -505,17 +505,9 @@ const updateProfessor = async () => {
             </main>
         </div>
 
-        <!-- Ajouter le Sheet pour les modules -->
+        <!-- Modifier le Sheet -->
         <Sheet v-model:open="showModulesSheet">
             <SheetPortal>
-                <!-- Alerte -->
-                <div v-if="alertMessage"
-                     class="fixed top-4 right-4 p-4 rounded-lg shadow-lg z-[60] transition-all duration-300"
-                     :class="alertMessage.type === 'error' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'"
-                >
-                    {{ alertMessage.message }}
-                </div>
-
                 <Transition
                     enter-active-class="transition duration-300 ease-out"
                     enter-from-class="opacity-0"
@@ -524,8 +516,11 @@ const updateProfessor = async () => {
                     leave-from-class="opacity-100"
                     leave-to-class="opacity-0"
                 >
-                    <SheetOverlay class="fixed inset-0 bg-black/50" />
+                    <SheetOverlay
+                        class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60]"
+                    />
                 </Transition>
+
                 <Transition
                     enter-active-class="transform transition duration-300 ease-out"
                     enter-from-class="translate-x-full"
@@ -534,9 +529,11 @@ const updateProfessor = async () => {
                     leave-from-class="translate-x-0"
                     leave-to-class="translate-x-full"
                 >
-                    <SheetContent class="fixed right-0 top-0 w-[400px] sm:w-[540px] h-full bg-white p-6 shadow-lg">
+                    <SheetContent
+                        class="fixed right-0 top-0 w-[400px] sm:w-[540px] h-full bg-white p-4 shadow-lg z-[61]"
+                    >
                         <div class="flex flex-col h-full">
-                            <div class="flex justify-between items-center mb-4">
+                            <div class="flex justify-between items-center mb-3">
                                 <SheetTitle class="text-lg font-semibold">Modules</SheetTitle>
                                 <div class="flex items-center gap-2">
                                     <Button
@@ -554,7 +551,7 @@ const updateProfessor = async () => {
                             </div>
 
                             <div class="flex-1 overflow-y-auto">
-                                <div class="grid grid-cols-2 gap-4">
+                                <div class="grid grid-cols-2 gap-3">
                                     <ModuleCard
                                         v-for="module in $page.props.modules"
                                         :key="module.id"
@@ -574,7 +571,7 @@ const updateProfessor = async () => {
         <!-- Dialog pour nouveau module -->
         <Dialog :open="showNewModuleDialog" @update:open="showNewModuleDialog = false">
             <DialogContent
-                class="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] w-[90vw] sm:max-w-[600px] max-h-[85vh] !p-0 flex flex-col bg-white rounded-lg overflow-hidden"
+                class="!fixed !left-[calc((100vw-540px)/4)] !translate-x-0 top-[50%] translate-y-[-50%] w-[90vw] sm:max-w-[600px] max-h-[85vh] !p-0 flex flex-col bg-white rounded-lg overflow-hidden z-[70]"
                 :aria-describedby="DIALOG_DESC.NEW_MODULE"
             >
                 <!-- En-tête fixe -->
@@ -766,7 +763,7 @@ const updateProfessor = async () => {
         <!-- Dialog pour nouveau professeur -->
         <Dialog :open="showNewProfessorDialog" @update:open="showNewProfessorDialog = false">
             <DialogContent
-                class="sm:max-w-[425px]"
+                class="!fixed !left-8 !translate-x-0 top-[50%] translate-y-[-50%] sm:max-w-[425px] z-[70]"
                 :aria-describedby="DIALOG_DESC.NEW_PROFESSOR"
             >
                 <DialogHeader>
@@ -799,7 +796,7 @@ const updateProfessor = async () => {
         <!-- Dialog pour modifier professeur -->
         <Dialog :open="showEditProfessorDialog" @update:open="showEditProfessorDialog = false">
             <DialogContent
-                class="sm:max-w-[425px] z-[100]"
+                class="!fixed !left-8 !translate-x-0 top-[50%] translate-y-[-50%] sm:max-w-[425px] z-[70]"
                 :aria-describedby="DIALOG_DESC.EDIT_PROFESSOR"
             >
                 <DialogHeader>
@@ -847,10 +844,34 @@ const updateProfessor = async () => {
 
 /* Assurer que le dialog est toujours au-dessus des autres éléments */
 .DialogOverlay {
-    z-index: 99 !important;
+    z-index: 65 !important;
 }
 
 .DialogContent {
-    z-index: 100 !important;
+    z-index: 70 !important;
+}
+
+/* Ajout des styles pour la nav fixe */
+nav.sticky {
+    transition: background-color 0.2s ease;
+    z-index: 50;
+}
+
+.SheetOverlay {
+    z-index: 60;
+}
+
+.SheetContent {
+    z-index: 61;
+}
+
+nav.sticky:hover {
+    background-color: rgba(255, 255, 255, 1);
+}
+
+/* Ajout des styles pour les transitions */
+.transform {
+  transform: translateX(0);
+  transition-property: transform, opacity;
 }
 </style>
