@@ -763,7 +763,7 @@ const updateProfessor = async () => {
         <!-- Dialog pour nouveau professeur -->
         <Dialog :open="showNewProfessorDialog" @update:open="showNewProfessorDialog = false">
             <DialogContent
-                class="!fixed !left-8 !translate-x-0 top-[50%] translate-y-[-50%] sm:max-w-[425px] z-[70]"
+                class="!fixed !left-[calc((100vw-540px-425px)/2)] !translate-x-0 top-[50%] translate-y-[-50%] sm:max-w-[425px] z-[70]"
                 :aria-describedby="DIALOG_DESC.NEW_PROFESSOR"
             >
                 <DialogHeader>
@@ -796,7 +796,7 @@ const updateProfessor = async () => {
         <!-- Dialog pour modifier professeur -->
         <Dialog :open="showEditProfessorDialog" @update:open="showEditProfessorDialog = false">
             <DialogContent
-                class="!fixed !left-8 !translate-x-0 top-[50%] translate-y-[-50%] sm:max-w-[425px] z-[70]"
+                class="!fixed !left-[calc((100vw-540px-425px)/2)] !translate-x-0 top-[50%] translate-y-[-50%] sm:max-w-[425px] z-[70]"
                 :aria-describedby="DIALOG_DESC.EDIT_PROFESSOR"
             >
                 <DialogHeader>
