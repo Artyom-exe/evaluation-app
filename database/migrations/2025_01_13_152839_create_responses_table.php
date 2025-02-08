@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignId('form_question_id')->constrained('form_questions')->onDelete('cascade');
             $table->foreignId('student_id')->nullable()->constrained()->onDelete('cascade');
             $table->json('answers')->nullable();
+            $table->boolean('is_temporary')->default(false); // Ajout du champ directement
             $table->timestamps();
         });
     }
