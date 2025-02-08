@@ -83,17 +83,39 @@ const deleteForm = async (id) => {
     }
 };
 
-// Ajout des classes de couleur pour les statuts
-const getStatusClasses = (status) => ({
-    'success': status === 'open',
-    'destructive': status === 'closed'
-});
+// Mise à jour des fonctions pour les statuts et badges
+const getStatusBadgeProps = (status) => {
+  switch (status) {
+    case 'draft':
+      return { variant: 'outline', class: 'bg-gray-100' };
+    case 'pending':
+      return { variant: 'warning', class: 'bg-yellow-100' };
+    case 'completed':
+      return { variant: 'success', class: 'bg-green-100' };
+    default:
+      return { variant: 'secondary', class: 'bg-gray-100' };
+  }
+};
 
-// Ajout du texte pour les statuts
-const getStatusText = (status) => ({
-    'open': 'Ouvert',
-    'closed': 'Fermé'
-}[status]);
+const getStatusText = (status) => {
+  const texts = {
+    'draft': 'Brouillon',
+    'pending': 'En cours',
+    'completed': 'Terminé'
+  };
+  return texts[status] || status;
+};
+
+// Fonction pour obtenir les classes des boutons
+const getButtonClass = (type) => {
+  const classes = {
+    'edit': 'text-blue-500 hover:text-blue-700',
+    'delete': 'text-red-500 hover:text-red-700',
+    'results': 'text-purple-500 hover:text-purple-700',
+    'send': 'bg-green-500 hover:bg-green-600 text-white'
+  };
+  return classes[type] || '';
+};
 
 // Modifier la fonction showAlert pour augmenter la durée d'affichage
 const showAlert = (message, type = 'success') => {
@@ -116,6 +138,10 @@ const duplicate = (form) => {
             }
         });
     }
+};
+
+const canDuplicate = (form) => {
+  return form.statut === 'draft' || form.statut === 'completed';
 };
 
 const showNewModuleDialog = ref(false);
@@ -206,6 +232,8 @@ const sendFormToStudents = (formId) => {
         }
     });
 };
+
+const canModifyForm = (form) => form.statut === 'draft';
 </script>
 
 <template>
@@ -292,44 +320,60 @@ const sendFormToStudents = (formId) => {
                             <td class="p-4">{{ form.module.professor.name }}</td>
                             <td class="p-4">{{ form.module.year.name }}</td>
                             <td class="p-4">
-                                <Badge :variant="form.statut === 'open' ? 'success' : 'destructive'" class="gap-2 px-3 py-1">
-                                    <i :class="[
-                                        form.statut === 'open' ? 'ri-checkbox-circle-line' : 'ri-close-circle-line',
-                                        form.statut === 'open' ? 'text-green-500' : 'text-red-500'
-                                    ]"></i>
+                                <Badge v-bind="getStatusBadgeProps(form.statut)" class="px-2 py-1">
                                     {{ getStatusText(form.statut) }}
                                 </Badge>
                             </td>
                             <td class="p-4">
                                 <div class="flex gap-2 justify-end">
-                                    <Button variant="outline" size="sm" asChild>
-                                        <Link :href="`/forms/${form.id}/edit`">
-                                            <i class="ri-edit-line text-base text-blue-500 hover:text-blue-600"></i>
-                                        </Link>
-                                    </Button>
-                                    <Button variant="outline" size="sm" asChild>
-                                        <Link :href="`/forms/${form.id}/results`">
-                                            <i class="ri-bar-chart-line text-base text-purple-500 hover:text-purple-600"></i>
-                                        </Link>
-                                    </Button>
                                     <Button
+                                        v-if="form.statut === 'draft'"
                                         variant="outline"
                                         size="sm"
+                                        :class="getButtonClass('edit')"
+                                        asChild
+                                    >
+                                        <Link :href="`/forms/${form.id}/edit`">
+                                            <i class="ri-edit-line"></i>
+                                        </Link>
+                                    </Button>
+
+                                    <Button
+                                        v-if="canDuplicate(form)"
+                                        variant="outline"
+                                        size="sm"
+                                        :class="getButtonClass('edit')"
                                         @click="duplicate(form)"
                                         title="Dupliquer"
                                     >
                                         <i class="ri-file-copy-line"></i>
                                     </Button>
+
+                                    <Button
+                                        v-if="form.statut === 'draft'"
+                                        variant="outline"
+                                        size="sm"
+                                        :class="getButtonClass('delete')"
+                                        @click="deleteForm(form.id)"
+                                    >
+                                        <i class="ri-delete-bin-line"></i>
+                                    </Button>
+
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        @click="deleteForm(form.id)"
+                                        :class="getButtonClass('results')"
+                                        asChild
                                     >
-                                        <i class="ri-delete-bin-line text-base text-red-500 hover:text-red-600"></i>
+                                        <Link :href="`/forms/${form.id}/results`">
+                                            <i class="ri-bar-chart-line"></i>
+                                        </Link>
                                     </Button>
+
                                     <Button
+                                        v-if="form.statut === 'draft'"
                                         @click="() => sendFormToStudents(form.id)"
-                                        variant="secondary"
+                                        :class="getButtonClass('send')"
                                         size="sm"
                                     >
                                         Envoyer aux étudiants

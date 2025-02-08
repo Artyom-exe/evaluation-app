@@ -8,13 +8,19 @@ class Form extends Model
 {
     protected $fillable = ['title', 'module_id', 'statut'];
 
-    // Relation : Un formulaire appartient à un module
+    // Relation directe avec un module principal
     public function module()
     {
-        return $this->belongsTo(Module::class)->with(['students']);
+        return $this->belongsTo(Module::class);
     }
 
-    // Relation : Un formulaire a plusieurs questions
+    // Relation many-to-many avec les modules (pour des utilisations futures)
+    public function additionalModules()
+    {
+        return $this->belongsToMany(Module::class, 'modules_forms')
+            ->withTimestamps();
+    }
+
     public function questions()
     {
         return $this->hasMany(FormQuestion::class);

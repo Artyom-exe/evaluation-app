@@ -1,5 +1,6 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, onMounted, onUnmounted } from 'vue';
+import { router } from '@inertiajs/vue3';  // Ajout de l'import du router
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { Card, CardHeader, CardTitle, CardContent } from '@/Components/ui/card';
 import { Badge } from "@/Components/ui/badge";
@@ -10,7 +11,8 @@ const props = defineProps({
     form: Object,
     responses: Array,
     studentsCount: Number,
-    totalStudents: Number
+    totalStudents: Number,
+    modules: Array
 });
 
 const stats = computed(() => {
@@ -64,6 +66,31 @@ const getParticipationStatus = computed(() => {
     if (rate >= 75) return { color: 'text-green-500', text: 'Excellente participation' };
     if (rate >= 50) return { color: 'text-yellow-500', text: 'Bonne participation' };
     return { color: 'text-red-500', text: 'Participation faible' };
+});
+
+// Vérifier le statut toutes les minutes si le formulaire est en cours
+const checkStatus = () => {
+    if (props.form.statut === 'pending') {
+        router.post(route('forms.check-status', props.form.id), {}, {
+            preserveScroll: true,
+            preserveState: true
+        });
+    }
+};
+
+let statusInterval;
+
+onMounted(() => {
+    if (props.form.statut === 'pending') {
+        checkStatus();
+        statusInterval = setInterval(checkStatus, 60000); // Vérifier toutes les minutes
+    }
+});
+
+onUnmounted(() => {
+    if (statusInterval) {
+        clearInterval(statusInterval);
+    }
 });
 </script>
 

@@ -65,12 +65,24 @@ class FormController extends Controller
 
             \DB::beginTransaction();
 
-            // Créer le formulaire
+            // Créer le formulaire avec statut 'draft'
             $form = Form::create([
                 'title' => $validated['title'],
                 'module_id' => $validated['module_id'],
-                'statut' => 'open'
+                'statut' => 'draft'  // Changé de 'open' à 'draft'
             ]);
+
+            // Attacher le module après que le formulaire soit créé et ait un ID
+            \DB::table('modules_forms')->insert([
+                'module_id' => $validated['module_id'],
+                'form_id' => $form->id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // Optionnel : ajouter le module principal aussi dans la table pivot
+            // pour maintenir la cohérence des données
+            $form->additionalModules()->attach($validated['module_id']);
 
             // Log après création du formulaire
             \Log::info('Formulaire créé:', ['form' => $form->toArray()]);
@@ -150,6 +162,9 @@ class FormController extends Controller
      */
     public function update(Request $request, Form $form)
     {
+        if ($form->statut !== 'draft') {
+            return back()->withErrors(['error' => 'Ce formulaire ne peut plus être modifié']);
+        }
         try {
             $validated = $request->validate([
                 'title' => 'required|string|max:255',
@@ -208,6 +223,9 @@ class FormController extends Controller
      */
     public function destroy(Form $form)
     {
+        if ($form->statut !== 'draft') {
+            return back()->withErrors(['error' => 'Ce formulaire ne peut pas être supprimé']);
+        }
         $form->delete();
         return redirect()->route('forms.index');
     }
@@ -224,7 +242,7 @@ class FormController extends Controller
             $newForm = Form::create([
                 'title' => $form->title . ' (copie)',
                 'module_id' => $form->module_id,
-                'statut' => 'open'
+                'statut' => 'draft'  // Changé de 'open' à 'draft'
             ]);
 
             // Dupliquer les questions avec leurs options
@@ -271,7 +289,11 @@ class FormController extends Controller
     public function sendAccess(Form $form)
     {
         try {
-            $form->load('module'); // Assurez-vous que le module est chargé
+            if ($form->statut !== 'draft') {
+                throw new \Exception('Ce formulaire ne peut plus être modifié');
+            }
+
+            $form->load('module');
 
             if (!$form->module) {
                 throw new \Exception('Module non trouvé pour ce formulaire');
@@ -283,9 +305,10 @@ class FormController extends Controller
                 throw new \Exception('Aucun étudiant trouvé dans ce module');
             }
 
-            foreach ($students as $student) {
-                \Log::info('Envoi email à:', ['email' => $student->email]);
+            \DB::beginTransaction();
 
+            // Créer les tokens et envoyer les emails
+            foreach ($students as $student) {
                 $token = FormAccessToken::create([
                     'student_id' => $student->id,
                     'form_id' => $form->id,
@@ -293,23 +316,43 @@ class FormController extends Controller
                     'expires_at' => now()->addDays(7),
                 ]);
 
-                try {
-                    Mail::to($student->email)->send(new FormAccessEmail($token));
-                } catch (\Exception $mailError) {
-                    \Log::error('Erreur d\'envoi email:', ['error' => $mailError->getMessage()]);
-                }
+                Mail::to($student->email)->send(new FormAccessEmail($token));
             }
 
+            // Mettre à jour le statut du formulaire
+            $form->update(['statut' => 'pending']);
+
+            \DB::commit();
             return back()->with('success', 'Les emails ont été envoyés avec succès');
         } catch (\Exception $e) {
-            \Log::error('Erreur lors de l\'envoi des emails:', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
+            \DB::rollBack();
+            return back()->with('error', $e->getMessage());
+        }
+    }
 
-            return response()->json([
-                'error' => 'Erreur lors de l\'envoi des emails: ' . $e->getMessage()
-            ], 500);
+    public function checkFormStatus(Form $form)
+    {
+        try {
+            // Vérifier si tous les étudiants ont répondu
+            $totalStudents = $form->module->students->count();
+            $respondedStudents = Response::where('form_question_id', $form->questions->first()->id)
+                ->where('is_temporary', false)
+                ->distinct('student_id')
+                ->count();
+
+            // Vérifier si tous les tokens sont expirés
+            $hasValidTokens = FormAccessToken::where('form_id', $form->id)
+                ->where('expires_at', '>', now())
+                ->exists();
+
+            if ($totalStudents === $respondedStudents || !$hasValidTokens) {
+                $form->update(['statut' => 'completed']);
+            }
+
+            return $form->statut;
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de la vérification du statut:', ['error' => $e->getMessage()]);
+            return $form->statut;
         }
     }
 
@@ -421,6 +464,19 @@ class FormController extends Controller
             $accessToken->used = true;
             $accessToken->save();
 
+            // Vérifier si tous les étudiants ont répondu
+            $form = $accessToken->form;
+            $totalStudents = $form->module->students->count();
+            $respondedStudents = Response::where('form_question_id', $form->questions->first()->id)
+                ->where('is_temporary', false)
+                ->distinct('student_id')
+                ->count();
+
+            // Si tous les étudiants ont répondu, marquer comme terminé
+            if ($totalStudents === $respondedStudents) {
+                $form->update(['statut' => 'completed']);
+            }
+
             \DB::commit();
 
             // Retourner une réponse Inertia plutôt qu'une redirection standard
@@ -434,7 +490,6 @@ class FormController extends Controller
 
     public function results(Form $form)
     {
-        // Chargement des relations
         $form->load([
             'module' => function ($query) {
                 $query->with(['professor', 'year', 'students']);
@@ -443,10 +498,7 @@ class FormController extends Controller
             'questions.choices'
         ]);
 
-        // Chargement des modules pour le menu latéral
         $modules = Module::with(['professor', 'year', 'students'])->get();
-
-        // Récupérer les réponses
         $responses = Response::with(['student'])
             ->where('is_temporary', false)
             ->whereIn('form_question_id', $form->questions->pluck('id'))
@@ -454,11 +506,9 @@ class FormController extends Controller
 
         $uniqueStudentsCount = $responses->pluck('student_id')->unique()->count();
         $totalStudents = $form->module->students->count();
-
-        // Grouper les réponses par question
         $responsesByQuestion = $responses->groupBy('form_question_id');
 
-        // Formater les données pour la vue
+        // Simplification du formatage des réponses
         $formattedResponses = $form->questions->map(function ($question) use ($responsesByQuestion) {
             $questionResponses = $responsesByQuestion->get($question->id, collect());
             $type = $question->questionType->type;
@@ -468,8 +518,9 @@ class FormController extends Controller
                 'question' => $question->label,
                 'type' => $type,
                 'responses' => $questionResponses->map(function ($response) {
-                    $answers = is_array($response->answers) ? $response->answers : json_decode($response->answers, true);
-                    $value = $answers['value'] ?? null;
+                    // Extraction directe de la valeur sans structure JSON
+                    $value = is_array($response->answers) ?
+                        ($response->answers['value'] ?? '') : (is_string($response->answers) ? json_decode($response->answers, true)['value'] ?? '' : '');
 
                     return [
                         'value' => $value,

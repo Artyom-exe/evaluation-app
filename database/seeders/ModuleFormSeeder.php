@@ -3,13 +3,24 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use App\Models\ModuleForm;
+use Illuminate\Support\Facades\DB;
+use App\Models\Form;
+use App\Models\Module;
 
 class ModuleFormSeeder extends Seeder
 {
     public function run()
     {
-        ModuleForm::create(['module_id' => 1, 'form_id' => 1]);
-        ModuleForm::create(['module_id' => 2, 'form_id' => 2]);
+        // Récupérer tous les forms existants
+        $forms = Form::all();
+
+        foreach ($forms as $form) {
+            DB::table('modules_forms')->insert([
+                'module_id' => $form->module_id,
+                'form_id' => $form->id,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+        }
     }
 }
