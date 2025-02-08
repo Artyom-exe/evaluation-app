@@ -4,50 +4,77 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\Choice;
+use App\Models\FormQuestion;
 
 class ChoiceSeeder extends Seeder
 {
     public function run()
     {
-        $choices = [
-            // Exemple de choix pour une question de type radio (satisfaction)
-            [
-                'form_question_id' => 1,
-                'text' => 'Très satisfait'
+        $choicesByType = [
+            'radio' => [
+                'satisfaction' => [
+                    'Très satisfait',
+                    'Satisfait',
+                    'Neutre',
+                    'Peu satisfait',
+                    'Pas du tout satisfait'
+                ],
+                'difficulté' => [
+                    'Très facile',
+                    'Facile',
+                    'Moyen',
+                    'Difficile',
+                    'Très difficile'
+                ],
+                'clarté' => [
+                    'Très clair',
+                    'Clair',
+                    'Moyen',
+                    'Peu clair',
+                    'Pas du tout clair'
+                ]
             ],
-            [
-                'form_question_id' => 1,
-                'text' => 'Satisfait'
-            ],
-            [
-                'form_question_id' => 1,
-                'text' => 'Neutre'
-            ],
-            [
-                'form_question_id' => 1,
-                'text' => 'Insatisfait'
-            ],
-            // Exemple de choix pour une autre question (checkbox)
-            [
-                'form_question_id' => 2,
-                'text' => 'Support de cours'
-            ],
-            [
-                'form_question_id' => 2,
-                'text' => 'Exercices pratiques'
-            ],
-            [
-                'form_question_id' => 2,
-                'text' => 'Projets'
-            ],
-            [
-                'form_question_id' => 2,
-                'text' => 'Examens'
+            'checkbox' => [
+                'supports' => [
+                    'Support de cours',
+                    'Présentations',
+                    'Exercices pratiques',
+                    'Travaux dirigés',
+                    'Projets',
+                    'Examens blancs'
+                ],
+                'amélioration' => [
+                    'Plus d\'exercices',
+                    'Plus de projets',
+                    'Plus d\'exemples concrets',
+                    'Plus de temps de pratique',
+                    'Plus d\'interactions'
+                ],
+                'points_forts' => [
+                    'Qualité des explications',
+                    'Disponibilité du professeur',
+                    'Support de cours',
+                    'Exercices pratiques',
+                    'Ambiance de travail'
+                ]
             ]
         ];
 
-        foreach ($choices as $choice) {
-            Choice::create($choice);
+        // Récupérer toutes les questions de type radio ou checkbox
+        $questions = FormQuestion::whereHas('questionType', function ($query) {
+            $query->whereIn('type', ['radio', 'checkbox']);
+        })->get();
+
+        foreach ($questions as $question) {
+            $type = $question->questionType->type;
+            $choices = $choicesByType[$type][array_rand($choicesByType[$type])];
+
+            foreach ($choices as $choiceText) {
+                Choice::create([
+                    'form_question_id' => $question->id,
+                    'text' => $choiceText
+                ]);
+            }
         }
     }
 }
