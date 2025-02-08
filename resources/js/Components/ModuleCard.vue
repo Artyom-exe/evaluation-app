@@ -361,7 +361,7 @@ const deleteProfessor = async (professor, event) => {
     <!-- Dialog pour l'édition du module -->
     <Dialog :open="showDialog" @update:open="showDialog = $event">
         <DialogContent
-            class="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] w-[90vw] sm:max-w-[600px] max-h-[85vh] !p-0 flex flex-col bg-white rounded-lg overflow-hidden"
+            class="!fixed !left-[calc((100vw-540px)/4)] !translate-x-0 top-[50%] translate-y-[-50%] w-[90vw] sm:max-w-[600px] max-h-[85vh] !p-0 flex flex-col bg-white rounded-lg overflow-hidden z-[70]"
             :aria-describedby="DIALOG_IDS.MODULE"
         >
             <!-- En-tête fixe -->
@@ -554,7 +554,10 @@ const deleteProfessor = async (professor, event) => {
 
     <!-- Dialog pour nouveau professeur -->
     <Dialog :open="showNewProfessorDialog" @update:open="showNewProfessorDialog = $event">
-        <DialogContent :aria-describedby="DIALOG_IDS.NEW_PROFESSOR">
+        <DialogContent
+            class="!fixed !left-[calc((100vw-540px)/4)] !translate-x-0 top-[50%] translate-y-[-50%] sm:max-w-[425px] z-[70]"
+            :aria-describedby="DIALOG_IDS.NEW_PROFESSOR"
+        >
             <DialogHeader>
                 <DialogTitle>Nouveau professeur</DialogTitle>
                 <DialogDescription :id="DIALOG_IDS.NEW_PROFESSOR">
@@ -583,7 +586,7 @@ const deleteProfessor = async (professor, event) => {
     <!-- Dialog pour modifier professeur -->
     <Dialog :open="showEditProfessorDialog" @update:open="showEditProfessorDialog = $event">
         <DialogContent
-            class="sm:max-w-[425px] !z-[100]"
+            class="!fixed !left-[calc((100vw-540px)/4)] !translate-x-0 top-[50%] translate-y-[-50%] sm:max-w-[425px] z-[70]"
             :aria-describedby="DIALOG_IDS.EDIT_PROFESSOR"
         >
             <DialogHeader>
@@ -642,5 +645,18 @@ const deleteProfessor = async (professor, event) => {
 /* Assurer que le select reste en dessous */
 .SelectContent {
     z-index: 50 !important;
+}
+
+/* Mise à jour des z-index */
+:deep(.DialogOverlay) {
+  z-index: 65 !important;
+}
+
+:deep(.DialogContent) {
+  z-index: 70 !important;
+}
+
+:deep(.SelectContent) {
+  z-index: 71 !important;
 }
 </style>
