@@ -349,10 +349,16 @@ class FormController extends Controller
                 $form->update(['statut' => 'completed']);
             }
 
-            return $form->statut;
+            // Au lieu de retourner juste le statut, on retourne une réponse JSON propre
+            return response()->json([
+                'status' => $form->statut,
+                'message' => 'Statut vérifié avec succès'
+            ]);
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la vérification du statut:', ['error' => $e->getMessage()]);
-            return $form->statut;
+            return response()->json([
+                'error' => 'Erreur lors de la vérification du statut'
+            ], 500);
         }
     }
 
@@ -490,6 +496,12 @@ class FormController extends Controller
 
     public function results(Form $form)
     {
+        // Vérifier si le formulaire est accessible
+        if ($form->statut !== 'pending' && $form->statut !== 'completed') {
+            return redirect()->route('forms.index')
+                ->with('error', 'Ce formulaire n\'est pas accessible');
+        }
+
         $form->load([
             'module' => function ($query) {
                 $query->with(['professor', 'year', 'students']);
