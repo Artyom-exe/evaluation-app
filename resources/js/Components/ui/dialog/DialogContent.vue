@@ -19,9 +19,8 @@ const props = defineProps({
   class: { type: null, required: false },
   'aria-describedby': {
     type: String,
-    required: true, // Changer required à true pour forcer l'utilisation
-    default: undefined
-  },
+    required: true,
+  }
 });
 const emits = defineEmits([
   'escapeKeyDown',
@@ -57,7 +56,6 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits);
       "
     >
       <slot />
-
       <DialogClose
         class="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
       >
