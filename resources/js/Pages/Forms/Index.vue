@@ -237,12 +237,18 @@ const createProfessor = async () => {
 };
 
 const sendFormToStudents = (formId) => {
-    // Correction : créer une instance form avec useForm avant de l'utiliser
     const form = useForm({});
 
     form.post(route('forms.send-access', formId), {
         preserveScroll: true,
         onSuccess: () => {
+            // Mettre à jour le statut du formulaire dans la liste de manière réactive
+            const formIndex = props.forms.findIndex(f => f.id === formId);
+            if (formIndex !== -1) {
+                // Utiliser la réactivité de Vue pour forcer la mise à jour
+                const updatedForm = { ...props.forms[formIndex], statut: 'pending' };
+                props.forms.splice(formIndex, 1, updatedForm);
+            }
             showAlert('Emails envoyés avec succès', 'success');
         },
         onError: () => {
