@@ -325,7 +325,10 @@ class FormController extends Controller
             $form->update(['statut' => 'pending']);
 
             \DB::commit();
-            return back()->with('success', 'Les emails ont été envoyés avec succès');
+
+            // Redirection simple vers l'index
+            return redirect()->route('forms.index')
+                ->with('success', 'Les emails ont été envoyés avec succès');
         } catch (\Exception $e) {
             \DB::rollBack();
             return back()->with('error', $e->getMessage());
