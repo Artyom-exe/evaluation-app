@@ -215,10 +215,54 @@ const showNewModuleDialog = ref(false);
 const showEditProfessorDialog = ref(false);
 const editingProfessor = ref({ id: null, name: '', email: '' });
 
-// Ajouter la fonction d'édition
+// Modifier la fonction editProfessor
 const editProfessor = (professor) => {
+    previousDialogState.value = showNewModuleDialog.value;
+    showNewModuleDialog.value = false; // Masquer le dialogue du module
     editingProfessor.value = { ...professor };
-    showEditProfessorDialog.value = true;
+    showOverlay.value = true;
+    setTimeout(() => {
+        showEditProfessorDialog.value = true;
+    }, 10);
+};
+
+// Modifier la fonction closeEditProfessorDialog
+const closeEditProfessorDialog = () => {
+    showEditProfessorDialog.value = false;
+    setTimeout(() => {
+        if (!showEditProfessorDialog.value && !showNewProfessorDialog.value) {
+            showOverlay.value = false;
+        }
+        showNewModuleDialog.value = previousDialogState.value; // Restaurer l'état précédent du dialogue module
+    }, 10);
+};
+
+// Ajouter l'état pour l'overlay
+const showOverlay = ref(false);
+
+// Ajouter l'état pour mémoriser le dialogue précédent
+const previousDialogState = ref(false);
+
+// Modifier la fonction handleNewProfessorDialog
+const handleNewProfessorDialog = () => {
+    showOverlay.value = true; // Garder l'overlay visible
+    previousDialogState.value = showNewModuleDialog.value;
+    showNewModuleDialog.value = false;
+    setTimeout(() => {
+        showNewProfessorDialog.value = true;
+    }, 10);
+};
+
+// Modifier la fonction closeNewProfessorDialog
+const closeNewProfessorDialog = () => {
+    showNewProfessorDialog.value = false;
+    setTimeout(() => {
+        if (!showEditProfessorDialog.value && !showNewProfessorDialog.value) {
+            showOverlay.value = false; // Cacher l'overlay seulement si aucun dialogue n'est ouvert
+        }
+        showNewModuleDialog.value = previousDialogState.value;
+    }, 10);
+    newProfessor.value = { name: '', email: '' };
 };
 
 // Ajouter la fonction de mise à jour
@@ -237,31 +281,6 @@ const updateProfessor = async () => {
     } catch (error) {
         showAlert('Une erreur est survenue', 'error');
     }
-};
-
-// Remplacer @click="showNewProfessorDialog = true" par handleNewProfessorDialog
-const handleNewProfessorDialog = () => {
-    showNewModuleDialog.value = false; // fermer le dialog de création
-    setTimeout(() => {
-        showNewProfessorDialog.value = true; // ouvrir le dialog de prof
-    }, 10); // durée similaire à la transition
-};
-
-// Fonction de fermeture du dialog de prof pour réafficher le dialog de création
-const closeNewProfessorDialog = () => {
-    showNewProfessorDialog.value = false;
-    setTimeout(() => {
-        showNewModuleDialog.value = true;
-    }, 10);
-    newProfessor.value = { name: '', email: '' };
-};
-
-// Fonction de fermeture du dialog d'édition pour réafficher le dialog de création et garder l'overlay sombre
-const closeEditProfessorDialog = () => {
-    showEditProfessorDialog.value = false;
-    setTimeout(() => {
-        showNewModuleDialog.value = true;
-    }, 10);
 };
 </script>
 
@@ -594,7 +613,7 @@ const closeEditProfessorDialog = () => {
         </Sheet>
 
         <!-- Dialog pour nouveau module -->
-        <Dialog :open="showNewModuleDialog" @update:open="showNewModuleDialog = false">
+        <Dialog :open="showNewModuleDialog" @update:open="showNewModuleDialog = $event">
             <Transition
                 enter-active-class="transition duration-300 ease-out"
                 enter-from-class="opacity-0 scale-95"
@@ -796,7 +815,7 @@ const closeEditProfessorDialog = () => {
         </Dialog>
 
         <!-- Dialog pour nouveau professeur -->
-        <Dialog :open="showNewProfessorDialog" @update:open="showNewProfessorDialog = false">
+        <Dialog :open="showNewProfessorDialog" @update:open="closeNewProfessorDialog">
             <Transition
                 enter-active-class="transition duration-300 ease-out"
                 enter-from-class="opacity-0 scale-95"
@@ -839,7 +858,7 @@ const closeEditProfessorDialog = () => {
         </Dialog>
 
         <!-- Dialog pour modifier professeur -->
-        <Dialog :open="showEditProfessorDialog" @update:open="showEditProfessorDialog = false">
+        <Dialog :open="showEditProfessorDialog" @update:open="closeEditProfessorDialog">
             <DialogContent
                 class="!fixed !left-[calc((100vw-540px-425px)/2)] !translate-x-0 top-[50%] translate-y-[-50%] sm:max-w-[425px] z-[70]"
                 :aria-describedby="DIALOG_DESC.EDIT_PROFESSOR"
@@ -871,6 +890,20 @@ const closeEditProfessorDialog = () => {
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+
+        <!-- Ajouter l'overlay global -->
+        <Transition
+            enter-active-class="transition duration-200 ease-out"
+            enter-from-class="opacity-0"
+            enter-to-class="opacity-100"
+            leave-active-class="transition duration-150 ease-in"
+            leave-from-class="opacity-100"
+            leave-to-class="opacity-0"
+        >
+            <div v-if="showOverlay || showNewModuleDialog || showNewProfessorDialog || showEditProfessorDialog"
+                 class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[65]"
+            />
+        </Transition>
     </div>
 </template>
 
