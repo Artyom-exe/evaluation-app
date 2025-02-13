@@ -19,7 +19,8 @@ const props = defineProps({
   class: { type: null, required: false },
   'aria-describedby': {
     type: String,
-    required: true,
+    required: false, // Changé de required: true à required: false
+    default: 'dialog-content' // Ajout d'une valeur par défaut
   }
 });
 const emits = defineEmits([
