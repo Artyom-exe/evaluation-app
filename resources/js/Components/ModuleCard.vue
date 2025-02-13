@@ -390,6 +390,67 @@ const deleteYear = async (year, event) => {
         emit('showAlert', 'Une erreur est survenue', 'error');
     }
 };
+
+const moduleData = ref({
+  name: props.module.name,
+  year_id: props.module.year?.id ? String(props.module.year.id) : '',
+  professor_id: props.module.professor?.id ? String(props.module.professor.id) : '',
+});
+
+const saveModule = async () => {
+    isLoading.value = true;
+    try {
+        // Première requête pour mettre à jour le module
+        const formDataToSend = new FormData();
+        formDataToSend.append('name', moduleData.value.name);
+        formDataToSend.append('year_id', formData.value.year_id);
+        formDataToSend.append('professor_id', formData.value.professor_id);
+
+        if (formData.value?.image) {
+            formDataToSend.append('image', formData.value.image);
+        }
+
+        await router.post(route('modules.update', props.module.id), formDataToSend, {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => {
+                // Mise à jour locale des données
+                props.module.name = moduleData.value.name;
+                props.module.year = props.years.find(y => String(y.id) === formData.value.year_id);
+                props.module.professor = props.professors.find(p => String(p.id) === formData.value.professor_id);
+            },
+            onError: (errors) => {
+                throw new Error(errors.error || 'Erreur lors de la mise à jour');
+            }
+        });
+
+        // Mettre à jour les étudiants si nécessaire
+        if (formData.value.studentEmails !== props.module.students?.map(s => s.email).join(', ')) {
+            await router.put(route('modules.updateStudents', props.module.id), {
+                emails: formData.value.studentEmails
+            }, {
+                preserveScroll: true,
+                preserveState: true,
+                onSuccess: () => {
+                    // Mise à jour locale des étudiants
+                    const emailList = formData.value.studentEmails
+                        .split(/[,\s]+/)
+                        .filter(e => e)
+                        .map(email => ({ email }));
+                    props.module.students = emailList;
+                }
+            });
+        }
+
+        emit('showAlert', 'Module mis à jour avec succès');
+        showDialog.value = false;
+
+    } catch (error) {
+        emit('showAlert', error.message || 'Erreur lors de la mise à jour', 'error');
+    } finally {
+        isLoading.value = false;
+    }
+};
 </script>
 
 <template>
@@ -502,6 +563,13 @@ const deleteYear = async (year, event) => {
                 <div class="p-6 space-y-6">
                     <!-- Informations de base du module -->
                     <div class="space-y-4">
+                        <div class="space-y-2">
+                            <Label>Nom du module</Label>
+                            <Input
+                                v-model="moduleData.name"
+                                placeholder="Nom du module"
+                            />
+                        </div>
                         <div class="space-y-2">
                             <div class="flex justify-between items-center">
                                 <Label>Année</Label>
@@ -686,7 +754,7 @@ const deleteYear = async (year, event) => {
                     <Button variant="outline" @click="showDialog = false">
                         Annuler
                     </Button>
-                    <Button @click="saveChanges" :disabled="isLoading"
+                    <Button @click="saveModule" :disabled="isLoading"
                         class="bg-black text-white hover:bg-gray-800 disabled:opacity-50">
                         {{ isLoading ? 'Enregistrement...' : 'Enregistrer' }}
                     </Button>

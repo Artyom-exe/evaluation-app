@@ -63,7 +63,9 @@ Route::middleware([
     // Module routes
     Route::prefix('modules')->name('modules.')->group(function () {
         Route::post('/', [ModuleController::class, 'store'])->name('store');
+        Route::put('{module}', [ModuleController::class, 'update'])->name('update');
         Route::put('{module}/update', [ModuleController::class, 'update'])->name('update');
+        Route::post('{module}/update', [ModuleController::class, 'update'])->name('update');
         Route::put('{module}/students', [ModuleController::class, 'updateStudents'])->name('updateStudents');
         Route::delete('{module}', [ModuleController::class, 'destroy'])->name('destroy');
         Route::delete('{module}/students', [ModuleController::class, 'removeStudent'])->name('removeStudent');
