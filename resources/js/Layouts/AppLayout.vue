@@ -1,6 +1,6 @@
 <script setup>
-import { ref } from 'vue';
-import { Head, Link, router } from '@inertiajs/vue3';
+import { ref, watch } from 'vue';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import ApplicationMark from '@/Components/ApplicationMark.vue';
 import Banner from '@/Components/Banner.vue';
 import Dropdown from '@/Components/Dropdown.vue';
@@ -131,8 +131,11 @@ const deleteProfessor = async (professor, event) => {
 
 // Gestionnaire d'alerte
 const showAlert = (message, type = 'success') => {
+    console.log('Showing alert:', message, type); // Pour le débogage
     alertMessage.value = { message, type };
-    setTimeout(() => alertMessage.value = null, 3000);
+    setTimeout(() => {
+        alertMessage.value = null;
+    }, 5000);
 };
 
 // Gestion des modules
@@ -282,6 +285,25 @@ const updateProfessor = async () => {
         showAlert('Une erreur est survenue', 'error');
     }
 };
+
+const page = usePage();
+
+// Surveiller les messages flash
+watch(() => page.props.flash, (flash) => {
+    if (flash?.success) {
+        showAlert(flash.success, 'success');
+    }
+    if (flash?.error || page.props.errors?.error) {
+        showAlert(flash?.error || page.props.errors.error, 'error');
+    }
+}, { deep: true, immediate: true });
+
+watch(() => page.props.errors, (errors) => {
+    if (errors?.error) {
+        showAlert(errors.error, 'error');
+    }
+}, { deep: true, immediate: true });
+
 </script>
 
 <template>
@@ -872,6 +894,26 @@ const updateProfessor = async () => {
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+
+        <!-- Ajouter le composant d'alerte en haut de la page -->
+        <Transition
+            enter-active-class="transform ease-out duration-300 transition"
+            enter-from-class="translate-y-2 opacity-0 sm:translate-y-0 sm:translate-x-2"
+            enter-to-class="translate-y-0 opacity-100 sm:translate-x-0"
+            leave-active-class="transition ease-in duration-100"
+            leave-from-class="opacity-100"
+            leave-to-class="opacity-0"
+        >
+            <div v-if="alertMessage"
+                :class="[
+                    'fixed top-4 right-4 p-4 rounded-lg shadow-lg z-[9999] transition-all duration-500 max-w-md',
+                    alertMessage.type === 'error'
+                        ? 'bg-red-500 text-white'
+                        : 'bg-green-500 text-white'
+                ]">
+                {{ alertMessage.message }}
+            </div>
+        </Transition>
     </div>
 </template>
 
@@ -921,5 +963,17 @@ nav.sticky {
 
 nav.sticky:hover {
   background-color: rgba(255, 255, 255, 1);
+}
+
+/* Ajouter des styles pour l'animation des alertes */
+.alert-enter-active,
+.alert-leave-active {
+    transition: all 0.3s ease;
+}
+
+.alert-enter-from,
+.alert-leave-to {
+    transform: translateY(-20px);
+    opacity: 0;
 }
 </style>
