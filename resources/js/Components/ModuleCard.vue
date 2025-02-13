@@ -346,7 +346,7 @@ const createYear = async () => {
         await router.post(route('years.store'), newYear.value, {
             preserveScroll: true,
             onSuccess: () => {
-                showNewYearDialog.value = false;
+                closeNewYearDialog(); // Utiliser closeNewYearDialog au lieu de modifier directement showNewYearDialog
                 emit('showAlert', 'Année ajoutée avec succès', 'success');
                 newYear.value = { name: '' };
             },
