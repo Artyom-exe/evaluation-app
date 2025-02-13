@@ -304,6 +304,75 @@ watch(() => page.props.errors, (errors) => {
     }
 }, { deep: true, immediate: true });
 
+const showNewYearDialog = ref(false);
+const newYear = ref({ name: '' });
+
+const handleNewYearDialog = () => {
+    showOverlay.value = true;
+    previousDialogState.value = showNewModuleDialog.value;
+    showNewModuleDialog.value = false;
+    setTimeout(() => {
+        showNewYearDialog.value = true;
+    }, 10);
+};
+
+const closeNewYearDialog = () => {
+    showNewYearDialog.value = false;
+    setTimeout(() => {
+        if (!showEditProfessorDialog.value && !showNewProfessorDialog.value && !showNewYearDialog.value) {
+            showOverlay.value = false;
+        }
+        showNewModuleDialog.value = previousDialogState.value;
+    }, 10);
+    newYear.value = { name: '' };
+};
+
+const createYear = async () => {
+    try {
+        await router.post(route('years.store'), newYear.value, {
+            preserveScroll: true,
+            onSuccess: () => {
+                closeNewYearDialog();
+                showAlert('Année ajoutée avec succès', 'success');
+                newYear.value = { name: '' };
+            },
+            onError: (errors) => {
+                showAlert(Object.values(errors)[0], 'error');
+            }
+        });
+    } catch (error) {
+        showAlert('Une erreur est survenue', 'error');
+    }
+};
+
+const deleteYear = async (year, event) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!confirm(`Voulez-vous vraiment supprimer l'année ${year.name} ?`)) {
+        return;
+    }
+
+    try {
+        await router.delete(route('years.destroy', year.id), {
+            preserveScroll: true,
+            onSuccess: (page) => {
+                if (page.props?.flash?.success) {
+                    showAlert(page.props.flash.success, 'success');
+                } else {
+                    showAlert('Année supprimée avec succès', 'success');
+                }
+            },
+            onError: (errors) => {
+                const errorMessage = errors.error || "Une erreur est survenue lors de la suppression";
+                showAlert(errorMessage, 'error');
+            }
+        });
+    } catch (error) {
+        showAlert('Une erreur est survenue', 'error');
+    }
+};
+
 </script>
 
 <template>
@@ -662,21 +731,45 @@ watch(() => page.props.errors, (errors) => {
                                 <Input v-model="newModule.name" placeholder="Nom du module" />
                             </div>
                             <div class="space-y-2">
-                                <Label>Année</Label>
-                                <Select v-model="newModule.year_id">
-                                    <SelectTrigger class="w-full">
-                                        <SelectValue placeholder="Sélectionner une année" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem
-                                            v-for="year in $page.props.years"
-                                            :key="year.id"
-                                            :value="String(year.id)"
+                                <div class="space-y-2">
+                                    <div class="flex justify-between items-center">
+                                        <Label>Année</Label>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            @click="handleNewYearDialog"
+                                            class="text-blue-600 hover:text-blue-700"
                                         >
-                                            {{ year.name }}
-                                        </SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                            <i class="ri-add-line mr-1"></i>
+                                            Nouvelle
+                                        </Button>
+                                    </div>
+                                    <Select v-model="newModule.year_id">
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Sélectionner une année" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <div class="max-h-[200px] overflow-y-auto">
+                                                <div v-for="year in $page.props.years"
+                                                     :key="year.id"
+                                                     class="flex items-center justify-between p-2 hover:bg-gray-100"
+                                                >
+                                                    <SelectItem :value="String(year.id)">
+                                                        {{ year.name }}
+                                                    </SelectItem>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        @click.stop="(e) => deleteYear(year, e)"
+                                                        class="text-red-500 hover:text-red-700"
+                                                    >
+                                                        <i class="ri-delete-bin-line"></i>
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
                         </div>
 
@@ -915,6 +1008,34 @@ watch(() => page.props.errors, (errors) => {
             </div>
         </Transition>
     </div>
+
+    <!-- Dialog pour nouvelle année -->
+    <Dialog :open="showNewYearDialog" @update:open="closeNewYearDialog">
+        <DialogContent
+            class="!fixed !left-[calc((100vw-540px-425px)/2)] !translate-x-0 top-[50%] translate-y-[-50%] sm:max-w-[425px] z-[75]"
+        >
+            <DialogHeader>
+                <DialogTitle>Nouvelle année</DialogTitle>
+                <DialogDescription>
+                    Ajouter une nouvelle année d'études
+                </DialogDescription>
+            </DialogHeader>
+            <div class="space-y-4">
+                <div class="space-y-2">
+                    <Label>Nom de l'année</Label>
+                    <Input v-model="newYear.name" placeholder="Ex: 1ère année" />
+                </div>
+            </div>
+            <DialogFooter>
+                <Button variant="outline" @click="closeNewYearDialog">
+                    Annuler
+                </Button>
+                <Button @click="createYear">
+                    Créer
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
 </template>
 
 <style>
