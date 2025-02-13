@@ -76,3 +76,22 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Styles pour Radix Select */
+[data-radix-popper-content-wrapper] {
+  z-index: 99999 !important;
+}
+
+[role="listbox"] {
+  z-index: 99999 !important;
+  position: relative !important;
+}
+
+.SelectContent {
+  z-index: 99999 !important;
+}
+
+/* Assurer que le portail est toujours au-dessus */
+[id^="radix-"][role="presentation"] {
+  z-index: 99999 !important;
+}

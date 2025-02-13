@@ -17,4 +17,7 @@ export default defineConfig({
             },
         }),
     ],
+    resolve: {
+        extensions: ['.js', '.vue', '.json'] // résout correctement les fichiers .vue
+    },
 });

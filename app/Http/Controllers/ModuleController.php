@@ -48,7 +48,13 @@ class ModuleController extends Controller
 
         try {
             \DB::beginTransaction();
-            $validated['image_path'] = $this->handleImage($request) ?? self::DEFAULT_IMAGE;
+
+            // Gérer l'image
+            if ($request->hasFile('image')) {
+                $validated['image_path'] = '/storage/' . $request->file('image')->store('modules', 'public');
+            }
+            // Pas besoin d'else car le modèle gèrera l'image par défaut
+
             $module = Module::create($validated);
             $students = json_decode($request->students, true);
             $this->handleStudents($module, $students);
@@ -97,19 +103,24 @@ class ModuleController extends Controller
     public function updateStudents(Request $request, Module $module)
     {
         try {
-            $validated = $request->validate([
-                'emails' => 'required|string'
-            ]);
             \DB::beginTransaction();
-            $emails = array_map('trim', explode(',', $validated['emails']));
-            $emails = array_filter($emails, 'filter_var', FILTER_VALIDATE_EMAIL);
+
+            $emails = collect(explode(',', $request->emails))
+                ->map(fn($email) => trim($email))
+                ->filter(fn($email) => filter_var($email, FILTER_VALIDATE_EMAIL))
+                ->unique()
+                ->values();
+
             $module->students()->detach();
+
             foreach ($emails as $email) {
                 $student = Student::firstOrCreate(['email' => $email]);
                 $module->students()->attach($student->id);
             }
+
             \DB::commit();
-            return redirect()->back()->with('success', 'Étudiants mis à jour avec succès');
+
+            return back();
         } catch (\Exception $e) {
             \DB::rollBack();
             return back()->withErrors(['error' => $e->getMessage()]);
@@ -140,15 +151,40 @@ class ModuleController extends Controller
     {
         try {
             $validated = $request->validate([
-                'professor_id' => 'nullable|exists:professors,id',
-                'year_id'      => 'nullable|exists:years,id',
-                'image'        => 'nullable|image|max:2048'
+                'name' => 'required|string|max:255',
+                'professor_id' => 'required|exists:professors,id',
+                'year_id' => 'required|exists:years,id',
+                'image' => 'nullable|image|max:2048',
+                'student_emails' => 'nullable|string'
             ]);
+
             \DB::beginTransaction();
-            $validated['image_path'] = $this->handleImage($request, $module->image_path);
-            $module->update(array_filter($validated));
+
+            if ($request->hasFile('image')) {
+                $validated['image_path'] = $this->handleImage($request, $module->image_path);
+            }
+
+            $module->update($validated);
+
+            // Gérer les étudiants si des emails sont fournis
+            if ($request->has('student_emails')) {
+                $emails = collect(explode(',', $request->student_emails))
+                    ->map(fn($email) => trim($email))
+                    ->filter(fn($email) => filter_var($email, FILTER_VALIDATE_EMAIL))
+                    ->unique()
+                    ->values();
+
+                $module->students()->detach();
+
+                foreach ($emails as $email) {
+                    $student = Student::firstOrCreate(['email' => $email]);
+                    $module->students()->attach($student->id);
+                }
+            }
+
             \DB::commit();
-            return redirect()->back()->with('success', 'Module mis à jour avec succès');
+
+            return back();
         } catch (\Exception $e) {
             \DB::rollBack();
             return back()->withErrors(['error' => $e->getMessage()]);

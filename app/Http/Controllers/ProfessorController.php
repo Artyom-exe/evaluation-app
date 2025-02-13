@@ -45,8 +45,13 @@ class ProfessorController extends Controller
             if ($hasModules) {
                 return back()->withErrors([
                     'error' => "Le professeur {$professor->name} ({$professor->email}) ne peut pas être supprimé car il est associé à des modules."
-                ]);
+                ], 422);
             }
+
+            // Vérifier si d'autres professeurs ont le même nom
+            $homonyms = Professor::where('name', $professor->name)
+                ->where('id', '!=', $professor->id)
+                ->exists();
 
             // Si c'est un homonyme, inclure l'email dans le message de succès
             $successMessage = $this->getSuccessMessage($professor, $homonyms);

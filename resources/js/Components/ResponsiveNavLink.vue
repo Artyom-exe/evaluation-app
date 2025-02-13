@@ -16,17 +16,23 @@ const classes = computed(() => {
 </script>
 
 <template>
-    <div>
-        <button v-if="as == 'button'" :class="classes" class="w-full text-start">
-            <slot />
-        </button>
-
-        <a v-else-if="as == 'a'" :class="classes" class="w-full text-start" :href="href">
-            <slot />
-        </a>
-
-        <Link v-else :href="href" :class="classes">
-            <slot />
+    <div class="flex items-center">
+        <!-- Ajout du logo dans la navigation -->
+        <Link :href="route('dashboard')" class="flex items-center">
+            <img src="/images/your-logo.png" alt="Your Logo" class="w-10 h-10 mr-2" />
         </Link>
+        <div>
+            <button v-if="as == 'button'" :class="classes" class="w-full text-start">
+                <slot />
+            </button>
+
+            <a v-else-if="as == 'a'" :class="classes" class="w-full text-start" :href="href">
+                <slot />
+            </a>
+
+            <Link v-else :href="href" :class="classes">
+                <slot />
+            </Link>
+        </div>
     </div>
 </template>

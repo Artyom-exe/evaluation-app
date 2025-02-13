@@ -9,15 +9,22 @@ class Response extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['form_question_id', 'student_id', 'answers'];
+    protected $fillable = [
+        'form_question_id',
+        'student_id',
+        'answers',
+        'is_temporary'
+    ];
 
-    // Relation : Une réponse appartient à une question
-    public function question()
+    protected $casts = [
+        'answers' => 'array'
+    ];
+
+    public function formQuestion()
     {
-        return $this->belongsTo(FormQuestion::class, 'form_question_id');
+        return $this->belongsTo(FormQuestion::class);
     }
 
-    // Relation : Une réponse appartient à un étudiant
     public function student()
     {
         return $this->belongsTo(Student::class);

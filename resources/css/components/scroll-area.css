@@ -1,0 +1,17 @@
+@layer base {
+  .scrollarea-thumb {
+    @apply relative flex-1 rounded-full bg-border;
+  }
+
+  .scrollarea-scrollbar {
+    @apply flex touch-none select-none transition-colors;
+  }
+
+  .scrollarea-scrollbar[data-orientation="vertical"] {
+    @apply w-2.5 flex-col border-l border-l-transparent p-[1px];
+  }
+
+  .scrollarea-scrollbar[data-orientation="horizontal"] {
+    @apply h-2.5 flex-col border-l border-l-transparent p-[1px];
+  }
+}

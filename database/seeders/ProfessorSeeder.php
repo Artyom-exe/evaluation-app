@@ -9,7 +9,16 @@ class ProfessorSeeder extends Seeder
 {
     public function run()
     {
-        Professor::create(['name' => 'Dr. John Doe', 'email' => 'john.doe@example.com']);
-        Professor::create(['name' => 'Dr. Jane Smith', 'email' => 'jane.smith@example.com']);
+        $professors = [
+            ['name' => 'Dr. John Doe', 'email' => 'john.doe@univ.fr'],
+            ['name' => 'Dr. Jane Smith', 'email' => 'jane.smith@univ.fr'],
+            ['name' => 'Prof. Alice Johnson', 'email' => 'alice.johnson@univ.fr'],
+            ['name' => 'Prof. Robert Wilson', 'email' => 'robert.wilson@univ.fr'],
+            ['name' => 'Dr. Marie Dupont', 'email' => 'marie.dupont@univ.fr'],
+        ];
+
+        foreach ($professors as $professor) {
+            Professor::create($professor);
+        }
     }
 }

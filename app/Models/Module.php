@@ -12,6 +12,14 @@ class Module extends Model
 
     protected $fillable = ['name', 'description', 'professor_id', 'year_id', 'image_path'];
 
+    // Ajouter un attribut pour gérer l'image par défaut
+    protected $defaultImageUrl = 'https://placehold.co/600x400/e2e8f0/475569?text=Module';
+
+    public function getImagePathAttribute($value)
+    {
+        return $value ?: $this->defaultImageUrl;
+    }
+
     // Relation : Un module appartient à un professeur
     public function professor()
     {
