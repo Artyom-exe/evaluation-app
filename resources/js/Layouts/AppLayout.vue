@@ -92,6 +92,8 @@ const createProfessor = async () => {
             preserveScroll: true,
             onSuccess: () => {
                 showNewProfessorDialog.value = false;
+                showOverlay.value = false; // Désactiver l'overlay immédiatement
+                showNewModuleDialog.value = true; // Réafficher immédiatement le dialogue module
                 showAlert('Professeur ajouté avec succès');
                 newProfessor.value = { name: '', email: '' };
             },
@@ -232,12 +234,8 @@ const editProfessor = (professor) => {
 // Modifier la fonction closeEditProfessorDialog
 const closeEditProfessorDialog = () => {
     showEditProfessorDialog.value = false;
-    setTimeout(() => {
-        if (!showEditProfessorDialog.value && !showNewProfessorDialog.value) {
-            showOverlay.value = false;
-        }
-        showNewModuleDialog.value = previousDialogState.value; // Restaurer l'état précédent du dialogue module
-    }, 10);
+    showOverlay.value = false; // Désactiver l'overlay immédiatement
+    showNewModuleDialog.value = true; // Réafficher immédiatement le dialogue module
 };
 
 // Ajouter l'état pour l'overlay
@@ -259,12 +257,8 @@ const handleNewProfessorDialog = () => {
 // Modifier la fonction closeNewProfessorDialog
 const closeNewProfessorDialog = () => {
     showNewProfessorDialog.value = false;
-    setTimeout(() => {
-        if (!showEditProfessorDialog.value && !showNewProfessorDialog.value) {
-            showOverlay.value = false; // Cacher l'overlay seulement si aucun dialogue n'est ouvert
-        }
-        showNewModuleDialog.value = previousDialogState.value;
-    }, 10);
+    showOverlay.value = false; // Désactiver l'overlay immédiatement
+    showNewModuleDialog.value = true; // Réafficher immédiatement le dialogue module
     newProfessor.value = { name: '', email: '' };
 };
 
@@ -275,6 +269,8 @@ const updateProfessor = async () => {
             preserveScroll: true,
             onSuccess: () => {
                 showEditProfessorDialog.value = false;
+                showOverlay.value = false; // Désactiver l'overlay immédiatement
+                showNewModuleDialog.value = true; // Réafficher immédiatement le dialogue module
                 showAlert('Professeur modifié avec succès');
             },
             onError: (errors) => {
@@ -724,52 +720,50 @@ const deleteYear = async (year, event) => {
                 <!-- Corps scrollable avec padding fixe -->
                 <div class="flex-1 overflow-y-auto">
                     <div class="p-6 space-y-6">
-                        <!-- Informations de base du module -->
-                        <div class="grid grid-cols-2 gap-4">
+                        <!-- Informations de base du module - Modifié ici -->
+                        <div class="space-y-4"> <!-- Changé de grid à space-y -->
                             <div class="space-y-2">
                                 <Label>Nom du module</Label>
                                 <Input v-model="newModule.name" placeholder="Nom du module" />
                             </div>
                             <div class="space-y-2">
-                                <div class="space-y-2">
-                                    <div class="flex justify-between items-center">
-                                        <Label>Année</Label>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            @click="handleNewYearDialog"
-                                            class="text-blue-600 hover:text-blue-700"
-                                        >
-                                            <i class="ri-add-line mr-1"></i>
-                                            Nouvelle
-                                        </Button>
-                                    </div>
-                                    <Select v-model="newModule.year_id">
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Sélectionner une année" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <div class="max-h-[200px] overflow-y-auto">
-                                                <div v-for="year in $page.props.years"
-                                                     :key="year.id"
-                                                     class="flex items-center justify-between p-2 hover:bg-gray-100"
-                                                >
-                                                    <SelectItem :value="String(year.id)">
-                                                        {{ year.name }}
-                                                    </SelectItem>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        @click.stop="(e) => deleteYear(year, e)"
-                                                        class="text-red-500 hover:text-red-700"
-                                                    >
-                                                        <i class="ri-delete-bin-line"></i>
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        </SelectContent>
-                                    </Select>
+                                <div class="flex justify-between items-center">
+                                    <Label>Année</Label>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        @click="handleNewYearDialog"
+                                        class="text-blue-600 hover:text-blue-700"
+                                    >
+                                        <i class="ri-add-line mr-1"></i>
+                                        Nouvelle
+                                    </Button>
                                 </div>
+                                <Select v-model="newModule.year_id">
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Sélectionner une année" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <div class="max-h-[200px] overflow-y-auto">
+                                            <div v-for="year in $page.props.years"
+                                                 :key="year.id"
+                                                 class="flex items-center justify-between p-2 hover:bg-gray-100"
+                                            >
+                                                <SelectItem :value="String(year.id)">
+                                                    {{ year.name }}
+                                                </SelectItem>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    @click.stop="(e) => deleteYear(year, e)"
+                                                    class="text-red-500 hover:text-red-700"
+                                                >
+                                                    <i class="ri-delete-bin-line"></i>
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
 
