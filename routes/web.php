@@ -60,6 +60,9 @@ Route::middleware([
     Route::post('/forms/{form}/check-status', [FormController::class, 'checkFormStatus'])
         ->name('forms.check-status');
 
+    // Ajouter cette nouvelle route pour l'envoi du PDF
+    Route::post('/forms/{form}/send-pdf', [FormController::class, 'sendPdf'])->name('forms.send-pdf');
+
     // Module routes
     Route::prefix('modules')->name('modules.')->group(function () {
         Route::post('/', [ModuleController::class, 'store'])->name('store');

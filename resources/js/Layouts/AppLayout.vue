@@ -22,6 +22,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/Components/ui/select";
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
+import ToastProvider from '@/Components/ui/toast/ToastProvider.vue';
 
 // Consolidation des IDs de description dans un objet
 const DIALOG_DESC = {
@@ -1030,6 +1031,7 @@ const deleteYear = async (year, event) => {
             </DialogFooter>
         </DialogContent>
     </Dialog>
+    <ToastProvider />
 </template>
 
 <style>
