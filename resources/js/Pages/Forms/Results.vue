@@ -4,8 +4,9 @@ import { router } from '@inertiajs/vue3';  // Ajout de l'import du router
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { Card, CardHeader, CardTitle, CardContent } from '@/Components/ui/card';
 import { Badge } from "@/Components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/Components/ui/tabs";
-import { PieChart, CheckCircle, ListChecks } from 'lucide-vue-next';
+import { Button } from "@/Components/ui/button"; // Ajout du bouton
+import { useToast } from '@/Components/ui/toast/use-toast'; // Import du toast
+import { PieChart, CheckCircle, ListChecks, Mail } from 'lucide-vue-next';
 
 const props = defineProps({
     form: Object,
@@ -68,6 +69,38 @@ const getParticipationStatus = computed(() => {
     return { color: 'text-red-500', text: 'Participation faible' };
 });
 
+const { toast } = useToast();
+
+const sendPdfToTeacher = async () => {
+    try {
+        await router.post(route('forms.send-pdf', props.form.id), {}, {
+            preserveState: true,
+            preserveScroll: true,
+            onSuccess: () => {
+                toast({
+                    title: "Succès",
+                    description: "Le PDF a été envoyé au professeur avec succès.",
+                });
+            },
+            onError: (errors) => {
+                console.error('Erreur envoi PDF:', errors);
+                toast({
+                    title: "Erreur",
+                    description: errors.error || "Une erreur est survenue lors de l'envoi du PDF.",
+                    variant: "destructive",
+                });
+            }
+        });
+    } catch (error) {
+        console.error('Erreur envoi PDF:', error);
+        toast({
+            title: "Erreur",
+            description: "Une erreur inattendue est survenue lors de l'envoi du PDF.",
+            variant: "destructive",
+        });
+    }
+};
+
 // Supprimons l'intervalle de vérification du statut
 onMounted(() => {
     // Ne rien faire au montage
@@ -79,10 +112,19 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <AppLayout :title="`Résultats - ${form.title}`">
+  <AppLayout :title="form ? `Résultats - ${form.title}` : 'Résultats'">
     <div class="container mx-auto p-6">
       <!-- En-tête avec stats principales -->
-      <div class="grid gap-4 mb-8 md:grid-cols-3">
+      <div v-if="form" class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold">Résultats du formulaire</h1>
+        <Button @click="sendPdfToTeacher" class="gap-2">
+          <Mail class="h-4 w-4" />
+          Envoyer le PDF au professeur
+        </Button>
+      </div>
+
+      <!-- Reste du contenu avec vérifications -->
+      <div v-if="form" class="grid gap-4 mb-8 md:grid-cols-3">
         <Card>
           <CardHeader class="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle class="text-sm font-medium">Taux de participation</CardTitle>
@@ -123,7 +165,7 @@ onUnmounted(() => {
       </div>
 
       <!-- Liste des questions et réponses -->
-      <div class="space-y-6">
+      <div v-if="form && stats.length > 0" class="space-y-6">
         <Card v-for="stat in stats" :key="stat.question_id">
           <CardHeader class="border-b">
             <CardTitle class="text-lg">{{ stat.question }}</CardTitle>
@@ -163,6 +205,11 @@ onUnmounted(() => {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      <!-- Message si aucune donnée -->
+      <div v-else class="text-center py-12">
+        <p class="text-gray-500">Aucune donnée disponible</p>
       </div>
     </div>
   </AppLayout>

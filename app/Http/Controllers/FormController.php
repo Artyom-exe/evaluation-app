@@ -16,10 +16,19 @@ use App\Models\FormAccessToken;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
 use App\Models\Response;
-
+use App\Services\PdfService;
+use App\Mail\FormResultsPdfMail;
+use Illuminate\Support\Facades\Storage;
 
 class FormController extends Controller
 {
+    protected $pdfService;
+
+    public function __construct(PdfService $pdfService)
+    {
+        $this->pdfService = $pdfService;
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -338,23 +347,20 @@ class FormController extends Controller
     public function checkFormStatus(Form $form)
     {
         try {
-            // Vérifier si tous les étudiants ont répondu
             $totalStudents = $form->module->students->count();
             $respondedStudents = Response::where('form_question_id', $form->questions->first()->id)
                 ->where('is_temporary', false)
                 ->distinct('student_id')
                 ->count();
 
-            // Vérifier si tous les tokens sont expirés
             $hasValidTokens = FormAccessToken::where('form_id', $form->id)
                 ->where('expires_at', '>', now())
                 ->exists();
 
-            if ($totalStudents === $respondedStudents || !$hasValidTokens) {
+            if (($totalStudents === $respondedStudents || !$hasValidTokens) && $form->statut === 'pending') {
                 $form->update(['statut' => 'completed']);
             }
 
-            // Au lieu de retourner juste le statut, on retourne une réponse JSON propre
             return response()->json([
                 'status' => $form->statut,
                 'message' => 'Statut vérifié avec succès'
@@ -365,6 +371,32 @@ class FormController extends Controller
                 'error' => 'Erreur lors de la vérification du statut'
             ], 500);
         }
+    }
+
+    private function getFormattedResponses(Form $form)
+    {
+        $responses = Response::with(['student'])
+            ->where('is_temporary', false)
+            ->whereIn('form_question_id', $form->questions->pluck('id'))
+            ->get();
+
+        return $form->questions->map(function ($question) use ($responses) {
+            $questionResponses = $responses->where('form_question_id', $question->id);
+
+            return [
+                'question' => $question->label,
+                'type' => $question->questionType->type,
+                'responses' => $questionResponses->map(function ($response) {
+                    return [
+                        'value' => $response->answers['value'],
+                        'student' => $response->student ? [
+                            'name' => $response->student->name,
+                            'email' => $response->student->email
+                        ] : null
+                    ];
+                })->toArray()
+            ];
+        })->toArray();
     }
 
     public function answer(string $token)
@@ -557,5 +589,47 @@ class FormController extends Controller
             'totalStudents' => $totalStudents,
             'modules' => $modules
         ]);
+    }
+
+    public function sendPdf(Form $form)
+    {
+        try {
+            if ($form->statut !== 'completed') {
+                return back()->withErrors(['error' => 'Le formulaire doit être terminé pour envoyer le PDF']);
+            }
+
+            // Charger les relations nécessaires
+            $form->load(['module.professor', 'questions.questionType']);
+
+            if (!$form->module || !$form->module->professor) {
+                return back()->withErrors(['error' => 'Impossible de trouver le professeur associé au module']);
+            }
+
+            try {
+                $responses = $this->getFormattedResponses($form);
+                $pdfPath = $this->pdfService->generateFormResultsPdf($form, $responses);
+
+                Mail::to($form->module->professor->email)
+                    ->send(new FormResultsPdfMail($form, $pdfPath));
+
+                if (file_exists($pdfPath)) {
+                    unlink($pdfPath);
+                }
+
+                return back()->with('success', 'PDF envoyé avec succès');
+            } catch (\Exception $e) {
+                if (isset($pdfPath) && file_exists($pdfPath)) {
+                    unlink($pdfPath);
+                }
+                throw $e;
+            }
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de l\'envoi du PDF:', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return back()->withErrors(['error' => 'Erreur lors de l\'envoi du PDF: ' . $e->getMessage()]);
+        }
     }
 }
