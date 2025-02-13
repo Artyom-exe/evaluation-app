@@ -119,9 +119,8 @@ class ModuleController extends Controller
             }
 
             \DB::commit();
-            
+
             return back();
-            
         } catch (\Exception $e) {
             \DB::rollBack();
             return back()->withErrors(['error' => $e->getMessage()]);
@@ -155,7 +154,8 @@ class ModuleController extends Controller
                 'name' => 'required|string|max:255',
                 'professor_id' => 'required|exists:professors,id',
                 'year_id' => 'required|exists:years,id',
-                'image' => 'nullable|image|max:2048'
+                'image' => 'nullable|image|max:2048',
+                'student_emails' => 'nullable|string'
             ]);
 
             \DB::beginTransaction();
@@ -165,11 +165,26 @@ class ModuleController extends Controller
             }
 
             $module->update($validated);
-            
+
+            // Gérer les étudiants si des emails sont fournis
+            if ($request->has('student_emails')) {
+                $emails = collect(explode(',', $request->student_emails))
+                    ->map(fn($email) => trim($email))
+                    ->filter(fn($email) => filter_var($email, FILTER_VALIDATE_EMAIL))
+                    ->unique()
+                    ->values();
+
+                $module->students()->detach();
+
+                foreach ($emails as $email) {
+                    $student = Student::firstOrCreate(['email' => $email]);
+                    $module->students()->attach($student->id);
+                }
+            }
+
             \DB::commit();
-            
+
             return back();
-            
         } catch (\Exception $e) {
             \DB::rollBack();
             return back()->withErrors(['error' => $e->getMessage()]);

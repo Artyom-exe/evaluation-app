@@ -400,50 +400,41 @@ const moduleData = ref({
 const saveModule = async () => {
     isLoading.value = true;
     try {
-        // Première requête pour mettre à jour le module
+        // Préparer toutes les données à envoyer
         const formDataToSend = new FormData();
         formDataToSend.append('name', moduleData.value.name);
         formDataToSend.append('year_id', formData.value.year_id);
         formDataToSend.append('professor_id', formData.value.professor_id);
-
         if (formData.value?.image) {
             formDataToSend.append('image', formData.value.image);
         }
+        formDataToSend.append('_method', 'PUT');
 
+        // Envoyer les emails des étudiants dans la même requête
+        if (formData.value.studentEmails) {
+            formDataToSend.append('student_emails', formData.value.studentEmails);
+        }
+
+        // Faire une seule requête pour tout mettre à jour
         await router.post(route('modules.update', props.module.id), formDataToSend, {
             preserveScroll: true,
-            preserveState: true,
             onSuccess: () => {
-                // Mise à jour locale des données
+                // Mettre à jour l'état local immédiatement
                 props.module.name = moduleData.value.name;
                 props.module.year = props.years.find(y => String(y.id) === formData.value.year_id);
                 props.module.professor = props.professors.find(p => String(p.id) === formData.value.professor_id);
+                props.module.students = formData.value.studentEmails
+                    .split(/[,\s]+/)
+                    .filter(e => e)
+                    .map(email => ({ email }));
+
+                emit('showAlert', 'Module mis à jour avec succès', 'success');
+                showDialog.value = false;
             },
             onError: (errors) => {
-                throw new Error(errors.error || 'Erreur lors de la mise à jour');
+                emit('showAlert', errors.error || 'Erreur lors de la mise à jour', 'error');
             }
         });
-
-        // Mettre à jour les étudiants si nécessaire
-        if (formData.value.studentEmails !== props.module.students?.map(s => s.email).join(', ')) {
-            await router.put(route('modules.updateStudents', props.module.id), {
-                emails: formData.value.studentEmails
-            }, {
-                preserveScroll: true,
-                preserveState: true,
-                onSuccess: () => {
-                    // Mise à jour locale des étudiants
-                    const emailList = formData.value.studentEmails
-                        .split(/[,\s]+/)
-                        .filter(e => e)
-                        .map(email => ({ email }));
-                    props.module.students = emailList;
-                }
-            });
-        }
-
-        emit('showAlert', 'Module mis à jour avec succès');
-        showDialog.value = false;
 
     } catch (error) {
         emit('showAlert', error.message || 'Erreur lors de la mise à jour', 'error');
