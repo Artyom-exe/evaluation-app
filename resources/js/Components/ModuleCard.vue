@@ -136,9 +136,8 @@ const createProfessor = async () => {
         await router.post(route('professors.store'), newProfessor.value, {
             preserveScroll: true,
             onSuccess: () => {
-                showNewProfessorDialog.value = false;
+                closeNewProfessorDialog(); // Utiliser la nouvelle fonction de fermeture
                 emit('showAlert', 'Professeur ajouté avec succès', 'success');
-                newProfessor.value = { name: '', email: '' };
             },
             onError: () => {
                 emit('showAlert', 'Erreur lors de la création du professeur', 'error');
@@ -234,7 +233,7 @@ const updateProfessor = async () => {
         await router.put(route('professors.update', editingProfessor.value.id), editingProfessor.value, {
             preserveScroll: true,
             onSuccess: () => {
-                showEditProfessorDialog.value = false;
+                closeEditProfessorDialog(); // Utiliser la nouvelle fonction de fermeture
                 emit('showAlert', 'Professeur modifié avec succès', 'success');
             },
             onError: () => {
@@ -267,6 +266,180 @@ const deleteProfessor = async (professor, event) => {
         });
     } catch (error) {
         emit('showAlert', 'Une erreur est survenue', 'error');
+    }
+};
+
+// Ajout d'une ref pour gérer l'overlay
+const showOverlay = ref(false);
+
+// Ajout de l'état pour mémoriser le dialogue précédent
+const previousDialogState = ref(false);
+
+// Modification des fonctions d'ouverture des dialogues
+const handleNewProfessorDialog = () => {
+    showOverlay.value = true; // Garder l'overlay visible
+    previousDialogState.value = showDialog.value;
+    showDialog.value = false;
+    setTimeout(() => {
+        showNewProfessorDialog.value = true;
+    }, 10);
+};
+
+const handleEditProfessorDialog = (professor) => {
+    showOverlay.value = true; // Garder l'overlay visible
+    previousDialogState.value = showDialog.value;
+    showDialog.value = false;
+    setTimeout(() => {
+        editingProfessor.value = { ...professor };
+        showEditProfessorDialog.value = true;
+    }, 10);
+};
+
+// Modification des fonctions de fermeture des dialogues
+const closeNewProfessorDialog = () => {
+    showNewProfessorDialog.value = false;
+    setTimeout(() => {
+        if (!showEditProfessorDialog.value && !showNewProfessorDialog.value) {
+            showOverlay.value = false; // Cacher l'overlay seulement si aucun dialogue n'est ouvert
+        }
+        showDialog.value = previousDialogState.value;
+    }, 10);
+    newProfessor.value = { name: '', email: '' };
+};
+
+const closeEditProfessorDialog = () => {
+    showEditProfessorDialog.value = false;
+    setTimeout(() => {
+        if (!showEditProfessorDialog.value && !showNewProfessorDialog.value) {
+            showOverlay.value = false; // Cacher l'overlay seulement si aucun dialogue n'est ouvert
+        }
+        showDialog.value = previousDialogState.value;
+    }, 10);
+};
+
+const showNewYearDialog = ref(false);
+const newYear = ref({ name: '' });
+
+const handleNewYearDialog = () => {
+    showOverlay.value = true;
+    previousDialogState.value = showDialog.value;
+    showDialog.value = false;
+    setTimeout(() => {
+        showNewYearDialog.value = true;
+    }, 10);
+};
+
+const closeNewYearDialog = () => {
+    showNewYearDialog.value = false;
+    setTimeout(() => {
+        if (!showEditProfessorDialog.value && !showNewProfessorDialog.value && !showNewYearDialog.value) {
+            showOverlay.value = false;
+        }
+        showDialog.value = previousDialogState.value;
+    }, 10);
+    newYear.value = { name: '' };
+};
+
+// Ajouter la gestion des années
+const createYear = async () => {
+    try {
+        await router.post(route('years.store'), newYear.value, {
+            preserveScroll: true,
+            onSuccess: () => {
+                closeNewYearDialog(); // Utiliser closeNewYearDialog au lieu de modifier directement showNewYearDialog
+                emit('showAlert', 'Année ajoutée avec succès', 'success');
+                newYear.value = { name: '' };
+            },
+            onError: (errors) => {
+                emit('showAlert', Object.values(errors)[0], 'error');
+            }
+        });
+    } catch (error) {
+        emit('showAlert', 'Une erreur est survenue', 'error');
+    }
+};
+
+const deleteYear = async (year, event) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!confirm(`Voulez-vous vraiment supprimer l'année ${year.name} ?`)) {
+        return;
+    }
+
+    try {
+        await router.delete(route('years.destroy', year.id), {
+            preserveScroll: true,
+            onSuccess: (page) => {
+                // Vérifier d'abord si flash existe
+                if (page.props?.flash?.success) {
+                    emit('showAlert', page.props.flash.success, 'success');
+                } else {
+                    emit('showAlert', 'Année supprimée avec succès', 'success');
+                }
+            },
+            onError: (errors) => {
+                // Gérer les différents cas possibles d'erreur
+                const errorMessage = errors.error ||
+                                   page.props?.flash?.error ||
+                                   "Une erreur est survenue lors de la suppression";
+                emit('showAlert', errorMessage, 'error');
+            }
+        });
+    } catch (error) {
+        emit('showAlert', 'Une erreur est survenue', 'error');
+    }
+};
+
+const moduleData = ref({
+  name: props.module.name,
+  year_id: props.module.year?.id ? String(props.module.year.id) : '',
+  professor_id: props.module.professor?.id ? String(props.module.professor.id) : '',
+});
+
+const saveModule = async () => {
+    isLoading.value = true;
+    try {
+        // Préparer toutes les données à envoyer
+        const formDataToSend = new FormData();
+        formDataToSend.append('name', moduleData.value.name);
+        formDataToSend.append('year_id', formData.value.year_id);
+        formDataToSend.append('professor_id', formData.value.professor_id);
+        if (formData.value?.image) {
+            formDataToSend.append('image', formData.value.image);
+        }
+        formDataToSend.append('_method', 'PUT');
+
+        // Envoyer les emails des étudiants dans la même requête
+        if (formData.value.studentEmails) {
+            formDataToSend.append('student_emails', formData.value.studentEmails);
+        }
+
+        // Faire une seule requête pour tout mettre à jour
+        await router.post(route('modules.update', props.module.id), formDataToSend, {
+            preserveScroll: true,
+            onSuccess: () => {
+                // Mettre à jour l'état local immédiatement
+                props.module.name = moduleData.value.name;
+                props.module.year = props.years.find(y => String(y.id) === formData.value.year_id);
+                props.module.professor = props.professors.find(p => String(p.id) === formData.value.professor_id);
+                props.module.students = formData.value.studentEmails
+                    .split(/[,\s]+/)
+                    .filter(e => e)
+                    .map(email => ({ email }));
+
+                emit('showAlert', 'Module mis à jour avec succès', 'success');
+                showDialog.value = false;
+            },
+            onError: (errors) => {
+                emit('showAlert', errors.error || 'Erreur lors de la mise à jour', 'error');
+            }
+        });
+
+    } catch (error) {
+        emit('showAlert', error.message || 'Erreur lors de la mise à jour', 'error');
+    } finally {
+        isLoading.value = false;
     }
 };
 </script>
@@ -361,7 +534,7 @@ const deleteProfessor = async (professor, event) => {
     <!-- Dialog pour l'édition du module -->
     <Dialog :open="showDialog" @update:open="showDialog = $event">
         <DialogContent
-            class="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] w-[90vw] sm:max-w-[600px] max-h-[85vh] !p-0 flex flex-col bg-white rounded-lg overflow-hidden"
+            class="!fixed !left-[calc((100vw-540px-600px)/2)] !translate-x-0 top-[50%] translate-y-[-50%] w-[90vw] sm:max-w-[600px] max-h-[85vh] !p-0 flex flex-col bg-white rounded-lg overflow-hidden z-[70]"
             :aria-describedby="DIALOG_IDS.MODULE"
         >
             <!-- En-tête fixe -->
@@ -382,19 +555,48 @@ const deleteProfessor = async (professor, event) => {
                     <!-- Informations de base du module -->
                     <div class="space-y-4">
                         <div class="space-y-2">
-                            <Label>Année</Label>
+                            <Label>Nom du module</Label>
+                            <Input
+                                v-model="moduleData.name"
+                                placeholder="Nom du module"
+                            />
+                        </div>
+                        <div class="space-y-2">
+                            <div class="flex justify-between items-center">
+                                <Label>Année</Label>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    @click="handleNewYearDialog"
+                                    class="text-blue-600 hover:text-blue-700"
+                                >
+                                    <i class="ri-add-line mr-1"></i>
+                                    Nouvelle
+                                </Button>
+                            </div>
                             <Select v-model="formData.year_id">
                                 <SelectTrigger>
                                     <SelectValue :placeholder="selectedYear.label" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem
-                                        v-for="year in years"
-                                        :key="year.id"
-                                        :value="String(year.id)"
-                                    >
-                                        {{ year.name }}
-                                    </SelectItem>
+                                    <div class="max-h-[200px] overflow-y-auto">
+                                        <div v-for="year in years"
+                                             :key="year.id"
+                                             class="flex items-center justify-between p-2 hover:bg-gray-100"
+                                        >
+                                            <SelectItem :value="String(year.id)">
+                                                {{ year.name }}
+                                            </SelectItem>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                @click.stop="(e) => deleteYear(year, e)"
+                                                class="text-red-500 hover:text-red-700"
+                                            >
+                                                <i class="ri-delete-bin-line"></i>
+                                            </Button>
+                                        </div>
+                                    </div>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -404,7 +606,7 @@ const deleteProfessor = async (professor, event) => {
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    @click="showNewProfessorDialog = true"
+                                    @click="handleNewProfessorDialog"
                                     class="text-blue-600 hover:text-blue-700"
                                 >
                                     <i class="ri-add-line mr-1"></i>
@@ -432,7 +634,7 @@ const deleteProfessor = async (professor, event) => {
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
-                                                    @click.stop="editProfessor(professor)"
+                                                    @click.stop="handleEditProfessorDialog(professor)"
                                                     class="text-blue-500 hover:text-blue-700"
                                                 >
                                                     <i class="ri-edit-line"></i>
@@ -543,7 +745,7 @@ const deleteProfessor = async (professor, event) => {
                     <Button variant="outline" @click="showDialog = false">
                         Annuler
                     </Button>
-                    <Button @click="saveChanges" :disabled="isLoading"
+                    <Button @click="saveModule" :disabled="isLoading"
                         class="bg-black text-white hover:bg-gray-800 disabled:opacity-50">
                         {{ isLoading ? 'Enregistrement...' : 'Enregistrer' }}
                     </Button>
@@ -553,8 +755,11 @@ const deleteProfessor = async (professor, event) => {
     </Dialog>
 
     <!-- Dialog pour nouveau professeur -->
-    <Dialog :open="showNewProfessorDialog" @update:open="showNewProfessorDialog = $event">
-        <DialogContent :aria-describedby="DIALOG_IDS.NEW_PROFESSOR">
+    <Dialog :open="showNewProfessorDialog" @update:open="closeNewProfessorDialog">
+        <DialogContent
+            class="!fixed !left-[calc((100vw-540px-425px)/2)] !translate-x-0 top-[50%] translate-y-[-50%] sm:max-w-[425px] z-[75]"
+            :aria-describedby="DIALOG_IDS.NEW_PROFESSOR"
+        >
             <DialogHeader>
                 <DialogTitle>Nouveau professeur</DialogTitle>
                 <DialogDescription :id="DIALOG_IDS.NEW_PROFESSOR">
@@ -572,7 +777,7 @@ const deleteProfessor = async (professor, event) => {
                 </div>
             </div>
             <DialogFooter>
-                <Button variant="outline" @click="showNewProfessorDialog = false">Annuler</Button>
+                <Button variant="outline" @click="closeNewProfessorDialog">Annuler</Button>
                 <Button @click="createProfessor" :disabled="isCreatingProfessor">
                     {{ isCreatingProfessor ? 'Création...' : 'Créer' }}
                 </Button>
@@ -581,9 +786,9 @@ const deleteProfessor = async (professor, event) => {
     </Dialog>
 
     <!-- Dialog pour modifier professeur -->
-    <Dialog :open="showEditProfessorDialog" @update:open="showEditProfessorDialog = $event">
+    <Dialog :open="showEditProfessorDialog" @update:open="closeEditProfessorDialog">
         <DialogContent
-            class="sm:max-w-[425px] !z-[100]"
+            class="!fixed !left-[calc((100vw-540px-425px)/2)] !translate-x-0 top-[50%] translate-y-[-50%] sm:max-w-[425px] z-[75]"
             :aria-describedby="DIALOG_IDS.EDIT_PROFESSOR"
         >
             <DialogHeader>
@@ -603,7 +808,7 @@ const deleteProfessor = async (professor, event) => {
                 </div>
             </div>
             <DialogFooter>
-                <Button variant="outline" @click="showEditProfessorDialog = false">
+                <Button variant="outline" @click="closeEditProfessorDialog">
                     Annuler
                 </Button>
                 <Button @click="updateProfessor" :disabled="isEditingProfessor">
@@ -612,6 +817,48 @@ const deleteProfessor = async (professor, event) => {
             </DialogFooter>
         </DialogContent>
     </Dialog>
+
+    <!-- Dialog pour nouvelle année -->
+    <Dialog :open="showNewYearDialog" @update:open="closeNewYearDialog">
+        <DialogContent
+            class="!fixed !left-[calc((100vw-540px-425px)/2)] !translate-x-0 top-[50%] translate-y-[-50%] sm:max-w-[425px] z-[75]"
+        >
+            <DialogHeader>
+                <DialogTitle>Nouvelle année</DialogTitle>
+                <DialogDescription>
+                    Ajouter une nouvelle année d'études
+                </DialogDescription>
+            </DialogHeader>
+            <div class="space-y-4">
+                <div class="space-y-2">
+                    <Label>Nom de l'année</Label>
+                    <Input v-model="newYear.name" placeholder="Ex: 1ère année" />
+                </div>
+            </div>
+            <DialogFooter>
+                <Button variant="outline" @click="closeNewYearDialog">
+                    Annuler
+                </Button>
+                <Button @click="createYear">
+                    Créer
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
+
+    <!-- Ajouter un overlay global -->
+    <Transition
+        enter-active-class="transition duration-200 ease-out"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+    >
+        <div v-if="showOverlay || showDialog || showNewProfessorDialog || showEditProfessorDialog"
+             class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[65]"
+        />
+    </Transition>
 </template>
 
 <style scoped>
@@ -642,5 +889,175 @@ const deleteProfessor = async (professor, event) => {
 /* Assurer que le select reste en dessous */
 .SelectContent {
     z-index: 50 !important;
+}
+
+/* Mise à jour des z-index */
+:deep(.DialogOverlay) {
+  z-index: 65 !important;
+}
+
+:deep(.DialogContent) {
+  z-index: 70 !important;
+}
+
+/* Augmenter le z-index des SelectContent pour qu'ils apparaissent au-dessus des dialogues */
+:deep(.SelectContent) {
+  z-index: 999 !important; /* Valeur plus élevée que les dialogues */
+}
+
+/* S'assurer que le Overlay est en dessous de tout */
+.fixed.inset-0.bg-black\/50 {
+  z-index: 64 !important;
+}
+
+/* Ajouter des styles de transition */
+.DialogContent {
+    transition: opacity 0.2s ease-in-out;
+}
+
+.Dialog[data-state="open"] .DialogContent {
+    animation: dialogIn 0.2s ease-out;
+}
+
+.Dialog[data-state="closed"] .DialogContent {
+    animation: dialogOut 0.2s ease-in;
+}
+
+@keyframes dialogIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes dialogOut {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+}
+
+/* Nouvelles animations pour les dialogues */
+.DialogContent {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.Dialog[data-state="open"] .DialogContent {
+    animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.Dialog[data-state="closed"] .DialogContent {
+    animation: slideOut 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translate3d(-50%, calc(-50% + 16px), 0) scale(0.96);
+        filter: blur(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translate3d(-50%, -50%, 0) scale(1);
+        filter: blur(0);
+    }
+}
+
+@keyframes slideOut {
+    from {
+        opacity: 1;
+        transform: translate3d(-50%, -50%, 0) scale(1);
+        filter: blur(0);
+    }
+    to {
+        opacity: 0;
+        transform: translate3d(-50%, calc(-50% - 16px), 0) scale(0.96);
+        filter: blur(4px);
+    }
+}
+
+/* Nouvelle animation plus rapide pour les dialogues */
+.DialogContent {
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.Dialog[data-state="open"] .DialogContent {
+    animation: fastSlideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.Dialog[data-state="closed"] .DialogContent {
+    animation: fastSlideOut 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fastSlideIn {
+    from {
+        opacity: 0;
+        transform: translate3d(-50%, calc(-50% + 8px), 0) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translate3d(-50%, -50%, 0) scale(1);
+    }
+}
+
+@keyframes fastSlideOut {
+    from {
+        opacity: 1;
+        transform: translate3d(-50%, -50%, 0) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translate3d(-50%, calc(-50% - 8px), 0) scale(0.98);
+    }
+}
+
+/* Réinitialisation complète des styles de z-index */
+:deep(.DialogOverlay) {
+  display: none !important;
+}
+
+:deep(.SelectContent) {
+  position: fixed !important;
+  z-index: 9999 !important;
+}
+
+:deep(.DialogContent) {
+  z-index: 100 !important;
+}
+
+/* Style pour le portail Radix */
+:root {
+  --radix-select-content-z-index: 9999;
+  --radix-select-portal-z-index: 9999;
+}
+
+/* Styles pour le wrapper du portail */
+:deep([data-radix-popper-content-wrapper]) {
+  z-index: 9999 !important;
+}
+
+/* Overlay global */
+.fixed.inset-0.bg-black\/50 {
+  z-index: 50 !important;
+}
+
+/* Nouveau style pour forcer le portail en avant-plan */
+:deep([role="listbox"]) {
+  z-index: 9999 !important;
+  position: relative !important;
+}
+
+/* Assurer que le contenu du select est toujours visible */
+:deep(.SelectContent[data-state="open"]) {
+  isolation: isolate;
+  z-index: 9999 !important;
 }
 </style>

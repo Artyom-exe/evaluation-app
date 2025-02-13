@@ -1,6 +1,6 @@
 <script setup>
-import { ref } from 'vue';
-import { Head, Link, router } from '@inertiajs/vue3';
+import { ref, watch } from 'vue';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import ApplicationMark from '@/Components/ApplicationMark.vue';
 import Banner from '@/Components/Banner.vue';
 import Dropdown from '@/Components/Dropdown.vue';
@@ -22,6 +22,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/Components/ui/select";
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
+import ToastProvider from '@/Components/ui/toast/ToastProvider.vue';
 
 // Consolidation des IDs de description dans un objet
 const DIALOG_DESC = {
@@ -92,6 +93,8 @@ const createProfessor = async () => {
             preserveScroll: true,
             onSuccess: () => {
                 showNewProfessorDialog.value = false;
+                showOverlay.value = false; // Désactiver l'overlay immédiatement
+                showNewModuleDialog.value = true; // Réafficher immédiatement le dialogue module
                 showAlert('Professeur ajouté avec succès');
                 newProfessor.value = { name: '', email: '' };
             },
@@ -131,8 +134,11 @@ const deleteProfessor = async (professor, event) => {
 
 // Gestionnaire d'alerte
 const showAlert = (message, type = 'success') => {
+    console.log('Showing alert:', message, type); // Pour le débogage
     alertMessage.value = { message, type };
-    setTimeout(() => alertMessage.value = null, 3000);
+    setTimeout(() => {
+        alertMessage.value = null;
+    }, 5000);
 };
 
 // Gestion des modules
@@ -215,10 +221,46 @@ const showNewModuleDialog = ref(false);
 const showEditProfessorDialog = ref(false);
 const editingProfessor = ref({ id: null, name: '', email: '' });
 
-// Ajouter la fonction d'édition
+// Modifier la fonction editProfessor
 const editProfessor = (professor) => {
+    previousDialogState.value = showNewModuleDialog.value;
+    showNewModuleDialog.value = false; // Masquer le dialogue du module
     editingProfessor.value = { ...professor };
-    showEditProfessorDialog.value = true;
+    showOverlay.value = true;
+    setTimeout(() => {
+        showEditProfessorDialog.value = true;
+    }, 10);
+};
+
+// Modifier la fonction closeEditProfessorDialog
+const closeEditProfessorDialog = () => {
+    showEditProfessorDialog.value = false;
+    showOverlay.value = false; // Désactiver l'overlay immédiatement
+    showNewModuleDialog.value = true; // Réafficher immédiatement le dialogue module
+};
+
+// Ajouter l'état pour l'overlay
+const showOverlay = ref(false);
+
+// Ajouter l'état pour mémoriser le dialogue précédent
+const previousDialogState = ref(false);
+
+// Modifier la fonction handleNewProfessorDialog
+const handleNewProfessorDialog = () => {
+    showOverlay.value = true; // Garder l'overlay visible
+    previousDialogState.value = showNewModuleDialog.value;
+    showNewModuleDialog.value = false;
+    setTimeout(() => {
+        showNewProfessorDialog.value = true;
+    }, 10);
+};
+
+// Modifier la fonction closeNewProfessorDialog
+const closeNewProfessorDialog = () => {
+    showNewProfessorDialog.value = false;
+    showOverlay.value = false; // Désactiver l'overlay immédiatement
+    showNewModuleDialog.value = true; // Réafficher immédiatement le dialogue module
+    newProfessor.value = { name: '', email: '' };
 };
 
 // Ajouter la fonction de mise à jour
@@ -228,6 +270,8 @@ const updateProfessor = async () => {
             preserveScroll: true,
             onSuccess: () => {
                 showEditProfessorDialog.value = false;
+                showOverlay.value = false; // Désactiver l'overlay immédiatement
+                showNewModuleDialog.value = true; // Réafficher immédiatement le dialogue module
                 showAlert('Professeur modifié avec succès');
             },
             onError: (errors) => {
@@ -238,6 +282,94 @@ const updateProfessor = async () => {
         showAlert('Une erreur est survenue', 'error');
     }
 };
+
+const page = usePage();
+
+// Surveiller les messages flash
+watch(() => page.props.flash, (flash) => {
+    if (flash?.success) {
+        showAlert(flash.success, 'success');
+    }
+    if (flash?.error || page.props.errors?.error) {
+        showAlert(flash?.error || page.props.errors.error, 'error');
+    }
+}, { deep: true, immediate: true });
+
+watch(() => page.props.errors, (errors) => {
+    if (errors?.error) {
+        showAlert(errors.error, 'error');
+    }
+}, { deep: true, immediate: true });
+
+const showNewYearDialog = ref(false);
+const newYear = ref({ name: '' });
+
+const handleNewYearDialog = () => {
+    showOverlay.value = true;
+    previousDialogState.value = showNewModuleDialog.value;
+    showNewModuleDialog.value = false;
+    setTimeout(() => {
+        showNewYearDialog.value = true;
+    }, 10);
+};
+
+const closeNewYearDialog = () => {
+    showNewYearDialog.value = false;
+    setTimeout(() => {
+        if (!showEditProfessorDialog.value && !showNewProfessorDialog.value && !showNewYearDialog.value) {
+            showOverlay.value = false;
+        }
+        showNewModuleDialog.value = previousDialogState.value;
+    }, 10);
+    newYear.value = { name: '' };
+};
+
+const createYear = async () => {
+    try {
+        await router.post(route('years.store'), newYear.value, {
+            preserveScroll: true,
+            onSuccess: () => {
+                closeNewYearDialog();
+                showAlert('Année ajoutée avec succès', 'success');
+                newYear.value = { name: '' };
+            },
+            onError: (errors) => {
+                showAlert(Object.values(errors)[0], 'error');
+            }
+        });
+    } catch (error) {
+        showAlert('Une erreur est survenue', 'error');
+    }
+};
+
+const deleteYear = async (year, event) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!confirm(`Voulez-vous vraiment supprimer l'année ${year.name} ?`)) {
+        return;
+    }
+
+    try {
+        await router.delete(route('years.destroy', year.id), {
+            preserveScroll: true,
+            onSuccess: (page) => {
+                if (page.props?.flash?.success) {
+                    showAlert(page.props.flash.success, 'success');
+                } else {
+                    showAlert('Année supprimée avec succès', 'success');
+                }
+            },
+            onError: (errors) => {
+                const errorMessage = errors.error || "Une erreur est survenue lors de la suppression";
+                showAlert(errorMessage, 'error');
+            }
+        });
+    } catch (error) {
+        showAlert('Une erreur est survenue', 'error');
+    }
+};
+
 </script>
 
 <template>
@@ -247,15 +379,15 @@ const updateProfessor = async () => {
         <Banner />
 
         <div class="min-h-screen bg-gray-100">
-            <nav class="bg-white border-b border-gray-100">
-                <!-- Primary Navigation Menu -->
+            <!-- Ajout de sticky, top-0 et z-50 à la nav -->
+            <nav class="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100 shadow-sm">
                 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div class="flex justify-between h-16">
                         <div class="flex">
                             <!-- Logo -->
                             <div class="shrink-0 flex items-center">
                                 <Link :href="route('dashboard')">
-                                    <ApplicationMark class="block h-9 w-auto" />
+                                    <img src="/images/your-logo2.png" alt="Your Logo" class="w-16 h-16" />
                                 </Link>
                             </div>
 
@@ -505,17 +637,9 @@ const updateProfessor = async () => {
             </main>
         </div>
 
-        <!-- Ajouter le Sheet pour les modules -->
+        <!-- Modifier le Sheet -->
         <Sheet v-model:open="showModulesSheet">
             <SheetPortal>
-                <!-- Alerte -->
-                <div v-if="alertMessage"
-                     class="fixed top-4 right-4 p-4 rounded-lg shadow-lg z-[60] transition-all duration-300"
-                     :class="alertMessage.type === 'error' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'"
-                >
-                    {{ alertMessage.message }}
-                </div>
-
                 <Transition
                     enter-active-class="transition duration-300 ease-out"
                     enter-from-class="opacity-0"
@@ -524,8 +648,11 @@ const updateProfessor = async () => {
                     leave-from-class="opacity-100"
                     leave-to-class="opacity-0"
                 >
-                    <SheetOverlay class="fixed inset-0 bg-black/50" />
+                    <SheetOverlay
+                        class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60]"
+                    />
                 </Transition>
+
                 <Transition
                     enter-active-class="transform transition duration-300 ease-out"
                     enter-from-class="translate-x-full"
@@ -534,9 +661,11 @@ const updateProfessor = async () => {
                     leave-from-class="translate-x-0"
                     leave-to-class="translate-x-full"
                 >
-                    <SheetContent class="fixed right-0 top-0 w-[400px] sm:w-[540px] h-full bg-white p-6 shadow-lg">
+                    <SheetContent
+                        class="fixed right-0 top-0 w-[400px] sm:w-[540px] h-full bg-white p-4 shadow-lg z-[61]"
+                    >
                         <div class="flex flex-col h-full">
-                            <div class="flex justify-between items-center mb-4">
+                            <div class="flex justify-between items-center mb-3">
                                 <SheetTitle class="text-lg font-semibold">Modules</SheetTitle>
                                 <div class="flex items-center gap-2">
                                     <Button
@@ -554,7 +683,7 @@ const updateProfessor = async () => {
                             </div>
 
                             <div class="flex-1 overflow-y-auto">
-                                <div class="grid grid-cols-2 gap-4">
+                                <div class="grid grid-cols-2 gap-3">
                                     <ModuleCard
                                         v-for="module in $page.props.modules"
                                         :key="module.id"
@@ -572,9 +701,9 @@ const updateProfessor = async () => {
         </Sheet>
 
         <!-- Dialog pour nouveau module -->
-        <Dialog :open="showNewModuleDialog" @update:open="showNewModuleDialog = false">
+        <Dialog :open="showNewModuleDialog" @update:open="showNewModuleDialog = $event">
             <DialogContent
-                class="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] w-[90vw] sm:max-w-[600px] max-h-[85vh] !p-0 flex flex-col bg-white rounded-lg overflow-hidden"
+                class="!fixed !left-[calc((100vw-540px-600px)/2)] !translate-x-0 top-[50%] translate-y-[-50%] w-[90vw] sm:max-w-[600px] max-h-[85vh] !p-0 flex flex-col bg-white rounded-lg overflow-hidden z-[70]"
                 :aria-describedby="DIALOG_DESC.NEW_MODULE"
             >
                 <!-- En-tête fixe -->
@@ -592,26 +721,48 @@ const updateProfessor = async () => {
                 <!-- Corps scrollable avec padding fixe -->
                 <div class="flex-1 overflow-y-auto">
                     <div class="p-6 space-y-6">
-                        <!-- Informations de base du module -->
-                        <div class="grid grid-cols-2 gap-4">
+                        <!-- Informations de base du module - Modifié ici -->
+                        <div class="space-y-4"> <!-- Changé de grid à space-y -->
                             <div class="space-y-2">
                                 <Label>Nom du module</Label>
                                 <Input v-model="newModule.name" placeholder="Nom du module" />
                             </div>
                             <div class="space-y-2">
-                                <Label>Année</Label>
+                                <div class="flex justify-between items-center">
+                                    <Label>Année</Label>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        @click="handleNewYearDialog"
+                                        class="text-blue-600 hover:text-blue-700"
+                                    >
+                                        <i class="ri-add-line mr-1"></i>
+                                        Nouvelle
+                                    </Button>
+                                </div>
                                 <Select v-model="newModule.year_id">
-                                    <SelectTrigger class="w-full">
+                                    <SelectTrigger>
                                         <SelectValue placeholder="Sélectionner une année" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem
-                                            v-for="year in $page.props.years"
-                                            :key="year.id"
-                                            :value="String(year.id)"
-                                        >
-                                            {{ year.name }}
-                                        </SelectItem>
+                                        <div class="max-h-[200px] overflow-y-auto">
+                                            <div v-for="year in $page.props.years"
+                                                 :key="year.id"
+                                                 class="flex items-center justify-between p-2 hover:bg-gray-100"
+                                            >
+                                                <SelectItem :value="String(year.id)">
+                                                    {{ year.name }}
+                                                </SelectItem>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    @click.stop="(e) => deleteYear(year, e)"
+                                                    class="text-red-500 hover:text-red-700"
+                                                >
+                                                    <i class="ri-delete-bin-line"></i>
+                                                </Button>
+                                            </div>
+                                        </div>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -621,10 +772,11 @@ const updateProfessor = async () => {
                         <div class="space-y-2">
                             <div class="flex justify-between items-center">
                                 <Label>Professeur</Label>
+                                <!-- Remplacer le clic -->
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    @click="showNewProfessorDialog = true"
+                                    @click="handleNewProfessorDialog"
                                     class="text-blue-600 hover:text-blue-700"
                                 >
                                     <i class="ri-add-line mr-1"></i>
@@ -764,9 +916,9 @@ const updateProfessor = async () => {
         </Dialog>
 
         <!-- Dialog pour nouveau professeur -->
-        <Dialog :open="showNewProfessorDialog" @update:open="showNewProfessorDialog = false">
+        <Dialog :open="showNewProfessorDialog" @update:open="closeNewProfessorDialog">
             <DialogContent
-                class="sm:max-w-[425px]"
+                class="!fixed !left-[calc((100vw-540px-425px)/2)] !translate-x-0 top-[50%] translate-y-[-50%] sm:max-w-[425px] z-[70]"
                 :aria-describedby="DIALOG_DESC.NEW_PROFESSOR"
             >
                 <DialogHeader>
@@ -786,7 +938,8 @@ const updateProfessor = async () => {
                     </div>
                 </div>
                 <DialogFooter>
-                    <Button variant="outline" @click="showNewProfessorDialog = false">
+                    <!-- Utiliser la fonction de fermeture pour réafficher le dialog de création -->
+                    <Button variant="outline" @click="closeNewProfessorDialog">
                         Annuler
                     </Button>
                     <Button @click="createProfessor">
@@ -797,9 +950,9 @@ const updateProfessor = async () => {
         </Dialog>
 
         <!-- Dialog pour modifier professeur -->
-        <Dialog :open="showEditProfessorDialog" @update:open="showEditProfessorDialog = false">
+        <Dialog :open="showEditProfessorDialog" @update:open="closeEditProfessorDialog">
             <DialogContent
-                class="sm:max-w-[425px] z-[100]"
+                class="!fixed !left-[calc((100vw-540px-425px)/2)] !translate-x-0 top-[50%] translate-y-[-50%] sm:max-w-[425px] z-[70]"
                 :aria-describedby="DIALOG_DESC.EDIT_PROFESSOR"
             >
                 <DialogHeader>
@@ -819,7 +972,8 @@ const updateProfessor = async () => {
                     </div>
                 </div>
                 <DialogFooter>
-                    <Button variant="outline" @click="showEditProfessorDialog = false">
+                    <!-- Appeler la fonction closeEditProfessorDialog pour garder l'overlay sombre -->
+                    <Button variant="outline" @click="closeEditProfessorDialog">
                         Annuler
                     </Button>
                     <Button @click="updateProfessor">
@@ -828,29 +982,115 @@ const updateProfessor = async () => {
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+
+        <!-- Ajouter le composant d'alerte en haut de la page -->
+        <Transition
+            enter-active-class="transform ease-out duration-300 transition"
+            enter-from-class="translate-y-2 opacity-0 sm:translate-y-0 sm:translate-x-2"
+            enter-to-class="translate-y-0 opacity-100 sm:translate-x-0"
+            leave-active-class="transition ease-in duration-100"
+            leave-from-class="opacity-100"
+            leave-to-class="opacity-0"
+        >
+            <div v-if="alertMessage"
+                :class="[
+                    'fixed top-4 right-4 p-4 rounded-lg shadow-lg z-[9999] transition-all duration-500 max-w-md',
+                    alertMessage.type === 'error'
+                        ? 'bg-red-500 text-white'
+                        : 'bg-green-500 text-white'
+                ]">
+                {{ alertMessage.message }}
+            </div>
+        </Transition>
     </div>
+
+    <!-- Dialog pour nouvelle année -->
+    <Dialog :open="showNewYearDialog" @update:open="closeNewYearDialog">
+        <DialogContent
+            class="!fixed !left-[calc((100vw-540px-425px)/2)] !translate-x-0 top-[50%] translate-y-[-50%] sm:max-w-[425px] z-[75]"
+        >
+            <DialogHeader>
+                <DialogTitle>Nouvelle année</DialogTitle>
+                <DialogDescription>
+                    Ajouter une nouvelle année d'études
+                </DialogDescription>
+            </DialogHeader>
+            <div class="space-y-4">
+                <div class="space-y-2">
+                    <Label>Nom de l'année</Label>
+                    <Input v-model="newYear.name" placeholder="Ex: 1ère année" />
+                </div>
+            </div>
+            <DialogFooter>
+                <Button variant="outline" @click="closeNewYearDialog">
+                    Annuler
+                </Button>
+                <Button @click="createYear">
+                    Créer
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
+    <ToastProvider />
 </template>
 
 <style>
-.transform {
-    transition-property: transform;
-}
-
-.grid-cols-2 > * {
-    min-width: 0;
-}
-
-/* Ajout des styles pour le dialog */
+/* Z-index hierarchy */
 :root {
-    --dialog-padding: 1.5rem;
+  --z-nav: 10;
+  --z-sheet-overlay: 20;
+  --z-sheet-content: 30;
+  --z-dialog-overlay: 40;
+  --z-dialog-content: 50;
 }
 
-/* Assurer que le dialog est toujours au-dessus des autres éléments */
+nav.sticky {
+  z-index: var(--z-nav);
+}
+
+.SheetOverlay {
+  z-index: var(--z-sheet-overlay) !important;
+}
+
+.SheetContent {
+  z-index: var(--z-sheet-content) !important;
+}
+
 .DialogOverlay {
-    z-index: 99 !important;
+  z-index: var(--z-dialog-overlay) !important;
 }
 
 .DialogContent {
-    z-index: 100 !important;
+  z-index: var(--z-dialog-content) !important;
+}
+
+/* Autres styles */
+.grid-cols-2 > * {
+  min-width: 0;
+}
+
+/* Transitions */
+.transform {
+  transition-property: transform;
+}
+
+nav.sticky {
+  transition: background-color 0.2s ease;
+}
+
+nav.sticky:hover {
+  background-color: rgba(255, 255, 255, 1);
+}
+
+/* Ajouter des styles pour l'animation des alertes */
+.alert-enter-active,
+.alert-leave-active {
+    transition: all 0.3s ease;
+}
+
+.alert-enter-from,
+.alert-leave-to {
+    transform: translateY(-20px);
+    opacity: 0;
 }
 </style>
