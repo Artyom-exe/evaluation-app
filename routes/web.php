@@ -7,6 +7,7 @@ use App\Http\Controllers\FormController;
 use App\Http\Controllers\QuestionTypeController;
 use App\Http\Controllers\ModuleController;
 use App\Http\Controllers\ProfessorController;
+use App\Http\Controllers\YearController;
 
 // Remplacer la route racine et la route dashboard
 Route::get('/', function () {
@@ -71,4 +72,8 @@ Route::middleware([
 
     // Professor routes
     Route::resource('professors', ProfessorController::class)->only(['store', 'update', 'destroy']);
+
+    // Year routes
+    Route::post('/years', [YearController::class, 'store'])->name('years.store');
+    Route::delete('/years/{year}', [YearController::class, 'destroy'])->name('years.destroy');
 });

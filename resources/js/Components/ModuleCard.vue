@@ -316,6 +316,80 @@ const closeEditProfessorDialog = () => {
         showDialog.value = previousDialogState.value;
     }, 10);
 };
+
+const showNewYearDialog = ref(false);
+const newYear = ref({ name: '' });
+
+const handleNewYearDialog = () => {
+    showOverlay.value = true;
+    previousDialogState.value = showDialog.value;
+    showDialog.value = false;
+    setTimeout(() => {
+        showNewYearDialog.value = true;
+    }, 10);
+};
+
+const closeNewYearDialog = () => {
+    showNewYearDialog.value = false;
+    setTimeout(() => {
+        if (!showEditProfessorDialog.value && !showNewProfessorDialog.value && !showNewYearDialog.value) {
+            showOverlay.value = false;
+        }
+        showDialog.value = previousDialogState.value;
+    }, 10);
+    newYear.value = { name: '' };
+};
+
+// Ajouter la gestion des années
+const createYear = async () => {
+    try {
+        await router.post(route('years.store'), newYear.value, {
+            preserveScroll: true,
+            onSuccess: () => {
+                showNewYearDialog.value = false;
+                emit('showAlert', 'Année ajoutée avec succès', 'success');
+                newYear.value = { name: '' };
+            },
+            onError: (errors) => {
+                emit('showAlert', Object.values(errors)[0], 'error');
+            }
+        });
+    } catch (error) {
+        emit('showAlert', 'Une erreur est survenue', 'error');
+    }
+};
+
+const deleteYear = async (year, event) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!confirm(`Voulez-vous vraiment supprimer l'année ${year.name} ?`)) {
+        return;
+    }
+
+    try {
+        await router.delete(route('years.destroy', year.id), {
+            preserveScroll: true,
+            onSuccess: (page) => {
+                // Vérifier d'abord si flash existe
+                if (page.props?.flash?.success) {
+                    emit('showAlert', page.props.flash.success, 'success');
+                } else {
+                    emit('showAlert', 'Année supprimée avec succès', 'success');
+                }
+            },
+            onError: (errors) => {
+                // Gérer les différents cas possibles d'erreur
+                const errorMessage = errors.error ||
+                                   page.props?.flash?.error ||
+                                   "Une erreur est survenue lors de la suppression";
+                emit('showAlert', errorMessage, 'error');
+            }
+        });
+    } catch (error) {
+        emit('showAlert', 'Une erreur est survenue', 'error');
+    }
+};
 </script>
 
 <template>
@@ -429,19 +503,41 @@ const closeEditProfessorDialog = () => {
                     <!-- Informations de base du module -->
                     <div class="space-y-4">
                         <div class="space-y-2">
-                            <Label>Année</Label>
+                            <div class="flex justify-between items-center">
+                                <Label>Année</Label>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    @click="handleNewYearDialog"
+                                    class="text-blue-600 hover:text-blue-700"
+                                >
+                                    <i class="ri-add-line mr-1"></i>
+                                    Nouvelle
+                                </Button>
+                            </div>
                             <Select v-model="formData.year_id">
                                 <SelectTrigger>
                                     <SelectValue :placeholder="selectedYear.label" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem
-                                        v-for="year in years"
-                                        :key="year.id"
-                                        :value="String(year.id)"
-                                    >
-                                        {{ year.name }}
-                                    </SelectItem>
+                                    <div class="max-h-[200px] overflow-y-auto">
+                                        <div v-for="year in years"
+                                             :key="year.id"
+                                             class="flex items-center justify-between p-2 hover:bg-gray-100"
+                                        >
+                                            <SelectItem :value="String(year.id)">
+                                                {{ year.name }}
+                                            </SelectItem>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                @click.stop="(e) => deleteYear(year, e)"
+                                                class="text-red-500 hover:text-red-700"
+                                            >
+                                                <i class="ri-delete-bin-line"></i>
+                                            </Button>
+                                        </div>
+                                    </div>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -658,6 +754,34 @@ const closeEditProfessorDialog = () => {
                 </Button>
                 <Button @click="updateProfessor" :disabled="isEditingProfessor">
                     {{ isEditingProfessor ? 'Modification...' : 'Modifier' }}
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
+
+    <!-- Dialog pour nouvelle année -->
+    <Dialog :open="showNewYearDialog" @update:open="closeNewYearDialog">
+        <DialogContent
+            class="!fixed !left-[calc((100vw-540px-425px)/2)] !translate-x-0 top-[50%] translate-y-[-50%] sm:max-w-[425px] z-[75]"
+        >
+            <DialogHeader>
+                <DialogTitle>Nouvelle année</DialogTitle>
+                <DialogDescription>
+                    Ajouter une nouvelle année d'études
+                </DialogDescription>
+            </DialogHeader>
+            <div class="space-y-4">
+                <div class="space-y-2">
+                    <Label>Nom de l'année</Label>
+                    <Input v-model="newYear.name" placeholder="Ex: 1ère année" />
+                </div>
+            </div>
+            <DialogFooter>
+                <Button variant="outline" @click="closeNewYearDialog">
+                    Annuler
+                </Button>
+                <Button @click="createYear">
+                    Créer
                 </Button>
             </DialogFooter>
         </DialogContent>
