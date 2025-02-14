@@ -387,7 +387,7 @@ const deleteYear = async (year, event) => {
                             <!-- Logo -->
                             <div class="shrink-0 flex items-center">
                                 <Link :href="route('dashboard')">
-                                    <img src="/images/your-logo2.png" alt="Your Logo" class="w-16 h-16" />
+                                    <img src="/images/your-logo2.png" alt="Your Logo" class="w-auto h-12" />
                                 </Link>
                             </div>
 
