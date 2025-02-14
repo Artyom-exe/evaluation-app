@@ -19,7 +19,7 @@ const classes = computed(() => {
     <div class="flex items-center">
         <!-- Ajout du logo dans la navigation -->
         <Link :href="route('dashboard')" class="flex items-center">
-            <img src="/images/your-logo.png" alt="Your Logo" class="w-10 h-10 mr-2" />
+            <img src="/images/your-logo2.png" alt="Your Logo" class="w-10 h-10 mr-2" />
         </Link>
         <div>
             <button v-if="as == 'button'" :class="classes" class="w-full text-start">
